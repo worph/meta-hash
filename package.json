@@ -1,0 +1,49 @@
+{
+  "name": "@metazla/meta-hash",
+  "version": "1.0.0",
+  "description": "module that hash (cid) files and uses cache",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "typesVersions": {
+    "*": {
+      "dist/index.d.ts": [
+        "dist/index.d.ts"
+      ],
+      "*": [
+        "dist/*"
+      ]
+    }
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./index.async": {
+      "import": "./dist/index.async.js",
+      "require": "./dist/index.async.cjs"
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "ci": "yarn run coverage",
+    "test": "jest"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.12",
+    "@types/node": "^20.12.2",
+    "jest": "^29.7.0",
+    "ts-node": "^10.9.2",
+    "tsup": "^8.0.2",
+    "typescript": "^5.4.3"
+  },
+  "packageManager": "yarn@4.1.1",
+  "dependencies": {
+    "csv-parse": "^5.5.5",
+    "csv-stringify": "^6.4.6",
+    "multiformats": "^13.1.0",
+    "piscina": "^4.4.0"
+  }
+}

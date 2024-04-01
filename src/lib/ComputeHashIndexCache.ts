@@ -1,0 +1,32 @@
+import {HashComputer} from "./HashComputer.js";
+import {CID_ALGORITHM_NAMES, ComputeInterface, MultiHashData} from "./MultiHashData.js";
+import {HashIndexManager} from "./HashIndexManager.js";
+import {stat} from "fs/promises";
+import path from "path";
+
+export class ComputeHashIndexCache implements ComputeInterface {
+    hashIndexManager: HashIndexManager;
+    hashComputer: HashComputer;
+
+    constructor(indexFilePath: string, private targetHash: CID_ALGORITHM_NAMES[] = [CID_ALGORITHM_NAMES.sha1, CID_ALGORITHM_NAMES.sha256]) {
+        this.hashComputer = new HashComputer(this.targetHash);
+        this.hashIndexManager = new HashIndexManager(indexFilePath);
+    }
+
+    async computeMissingHash(filePath: string, metadata: MultiHashData): Promise<void> {
+        await this.hashIndexManager.init();
+        let stats = await stat(filePath);
+        if (this.hashIndexManager.getCache().has(path.basename(filePath))) {
+            const indexLine = this.hashIndexManager.getCidForFile(filePath, stats.size, stats.mtime.toISOString());
+            if(indexLine) {
+                for (const hash of this.targetHash) {
+                    if (!metadata[hash] && indexLine[hash]) {
+                        metadata[hash] = indexLine[hash];
+                    }
+                }
+            }
+        }
+        await this.hashComputer.computeMissingHash(filePath, metadata);
+        this.hashIndexManager.addFileCid(filePath, stats.size, stats.mtime.toISOString(), metadata);
+    }
+}
