@@ -1,0 +1,30 @@
+'use strict';
+
+var piscina = require('piscina');
+var fs = require('fs');
+var csvParse = require('csv-parse');
+var sync = require('csv-parse/sync');
+var sync$1 = require('csv-stringify/sync');
+var promises = require('fs/promises');
+var y = require('path');
+var timers = require('timers');
+require('multiformats/cid');
+require('multiformats/hashes/digest');
+
+function _interopDefault (e) { return e && e.__esModule ? e : { default: e }; }
+
+var y__default = /*#__PURE__*/_interopDefault(y);
+
+var C=Object.defineProperty;var g=Object.getOwnPropertySymbols;var H=Object.prototype.hasOwnProperty,b=Object.prototype.propertyIsEnumerable;var x=(a,e,t)=>e in a?C(a,e,{enumerable:!0,configurable:!0,writable:!0,value:t}):a[e]=t,I=(a,e)=>{for(var t in e||(e={}))H.call(e,t)&&x(a,t,e[t]);if(g)for(var t of g(e))b.call(e,t)&&x(a,t,e[t]);return a};var n=(a,e,t)=>new Promise((i,s)=>{var r=c=>{try{h(t.next(c));}catch(f){s(f);}},o=c=>{try{h(t.throw(c));}catch(f){s(f);}},h=c=>c.done?i(c.value):Promise.resolve(c.value).then(r,o);h((t=t.apply(a,e)).next());});var S={};var m=class{constructor(){this.piscina=new piscina.Piscina({maxThreads:4,filename:new URL("./ShaComputeWorker.js",S.url).href});}computeCIDs(e,t){return n(this,null,function*(){return this.piscina.run({filePath:e,algorithms:t})})}};var d=class{constructor(e){this.targetHash=e;this.fileIDComputer=new m;}computeMissingHash(e,t){return n(this,null,function*(){let i=this.targetHash.filter(r=>!t[r]);if(i.length===0)return;(yield this.fileIDComputer.computeCIDs(e,i)).forEach((r,o)=>{let h=i[o];t[h]=r;});})}};var v=(s=>(s[s.sha256=18]="sha256",s[s.sha1=17]="sha1",s[s.md5=213]="md5",s[s.sha3_256=22]="sha3_256",s))(v||{}),p=(s=>(s.sha256="cid_sha2-256",s.sha1="cid_sha1",s.md5="cid_md5",s.sha3_256="cid_sha3-256",s))(p||{}),F=(s=>(s.sha256="sha2-256",s.sha1="sha1",s.md5="md5",s.sha3_256="sha3-256",s))(F||{});function u(a){return n(this,null,function*(){try{return yield promises.access(a,promises.constants.F_OK),!0}catch(e){return !1}})}var ie=["path","size","mtime"],l=class{constructor(e,t=["cid_sha1","cid_sha2-256"]){this.filePath=e;this.targetHash=t;this.cache=new Map;this.intervalTime=3e4;this.lastIndexFileSize=0;this.indexOpsInProgress=!1;this.hasChanged=!1;if(!e)throw new Error("Invalid index file path")}getCache(){return new Map(this.cache)}init(e=!0){return n(this,null,function*(){return this.initialLoad||(this.initialLoad=new Promise((t,i)=>n(this,null,function*(){try{if(!this.checkCSVHeaders(this.filePath))throw new Error("Invalid index file headers");yield this.loadIndex(),e&&this.start(),t();}catch(s){i(s);}}))),this.initialLoad})}checkCSVHeaders(e){let t=sync.parse(e,{bom:!0,columns:!0,skip_empty_lines:!0});if(t.length===0)return !0;let i=Object.keys(t[0]);return ["path","size","mtime",...this.targetHash].every(r=>i.includes(r))}start(){this.startAutoSave(this.intervalTime);}stopAutoSave(){this.intervalId&&timers.clearInterval(this.intervalId);}startAutoSave(e){this.stopAutoSave(),this.intervalTime=e,this.intervalId=setInterval(()=>this.saveCacheToFile(),e);}loadIndex(){return n(this,null,function*(){if(yield u(this.filePath)){let e=yield fs.promises.stat(this.filePath);if(this.lastIndexFileSize!==e.size){let t=yield this.readCsv();for(let i of t)this.cache.set(i.path,i);return this.lastIndexFileSize=e.size,this.lastCacheFile=t,t}else return this.lastCacheFile}return []})}loadIndexFromCache(){return Array.from(this.cache.values())}readCsv(){return n(this,null,function*(){if(!(yield u(this.filePath)))return [];let e=performance.now(),t=csvParse.parse({columns:!0,skip_empty_lines:!0}),i=[];return new Promise((s,r)=>{fs.createReadStream(this.filePath).pipe(t).on("data",o=>{i.push(o);}).on("end",()=>{s(i),console.log(`Index read time ${performance.now()-e}ms`);}).on("error",o=>{r(o);});})})}saveCacheToFile(){return n(this,null,function*(){if(this.indexOpsInProgress||!this.hasChanged)return;this.hasChanged=!1,this.indexOpsInProgress=!0;let e=performance.now(),t=yield this.loadIndex();if(this.cache.size!==0){let r=this.loadIndexFromCache().filter(o=>!t.find(h=>h.path===o.path));if(r.length!==0){let o=sync$1.stringify(r,{header:t.length===0,columns:[{key:"path",header:"path"},{key:"size",header:"size"},{key:"mtime",header:"mtime"},...this.targetHash.map(h=>({key:h,header:h}))]});yield fs.promises.appendFile(this.filePath,o);}}let i=performance.now()-e;console.log(`Index saved in ${i}ms`),i*10>this.intervalTime&&(this.startAutoSave(i*10),console.log(`Index save interval increased to ${i*10}ms`)),this.indexOpsInProgress=!1;})}getCidForFile(e,t,i){let s=y__default.default.basename(e),r=this.cache.get(s);if(r){if(r.mtime){if(r.size===t+""&&r.mtime===i)return r}else if(r.size===t+"")return r}return null}addFileCid(e,t,i,s){if(!e||!t||!i||!s)throw new Error("Invalid parameters");let r=t+"",o=y__default.default.basename(e),h=I({path:o,size:r,mtime:i},s);this.cache.set(o,h),this.hasChanged=!0;}};var M=class{constructor(e,t=["cid_sha1","cid_sha2-256"]){this.targetHash=t;this.hashComputer=new d(this.targetHash),this.hashIndexManager=new l(e);}computeMissingHash(e,t){return n(this,null,function*(){yield this.hashIndexManager.init();let i=yield promises.stat(e);if(this.hashIndexManager.getCache().has(y__default.default.basename(e))){let s=this.hashIndexManager.getCidForFile(e,i.size,i.mtime.toISOString());if(s)for(let r of this.targetHash)!t[r]&&s[r]&&(t[r]=s[r]);}yield this.hashComputer.computeMissingHash(e,t),this.hashIndexManager.addFileCid(e,i.size,i.mtime.toISOString(),t);})}};
+
+exports.CID_ALGORITHM = F;
+exports.CID_ALGORITHM_CODES = v;
+exports.CID_ALGORITHM_NAMES = p;
+exports.ComputeHashIndexCache = M;
+exports.FileIDComputer = m;
+exports.HashComputer = d;
+exports.HashIndexManager = l;
+exports.INDEX_HEADERS = ie;
+exports.existsAsync = u;
+//# sourceMappingURL=out.js.map
+//# sourceMappingURL=index.cjs.map
