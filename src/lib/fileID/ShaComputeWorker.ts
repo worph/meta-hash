@@ -2,7 +2,7 @@ import { createReadStream } from "fs";
 import {BinaryLike, createHash} from 'crypto';
 import { CID } from 'multiformats/cid';
 import { create } from "multiformats/hashes/digest";
-import {CID_ALGORITHM, CID_ALGORITHM_CODES, CID_ALGORITHM_NAMES} from "../MultiHashData.js";
+import {CID_ALGORITHM, CID_ALGORITHM_CODES, CID_ALGORITHM_NAMES} from "../MultiHashData";
 
 export interface SimpleHash {
     update(data: BinaryLike),

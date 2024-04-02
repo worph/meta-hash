@@ -1,6 +1,6 @@
-import {HashComputer} from "./HashComputer.js";
-import {CID_ALGORITHM_NAMES, ComputeInterface, MultiHashData} from "./MultiHashData.js";
-import {HashIndexManager} from "./HashIndexManager.js";
+import {HashComputer} from "./HashComputer";
+import {CID_ALGORITHM_NAMES, ComputeInterface, MultiHashData} from "./MultiHashData";
+import {HashIndexManager} from "./HashIndexManager";
 import {stat} from "fs/promises";
 import path from "path";
 
@@ -8,8 +8,8 @@ export class ComputeHashIndexCache implements ComputeInterface {
     hashIndexManager: HashIndexManager;
     hashComputer: HashComputer;
 
-    constructor(indexFilePath: string, private targetHash: CID_ALGORITHM_NAMES[] = [CID_ALGORITHM_NAMES.sha1, CID_ALGORITHM_NAMES.sha256]) {
-        this.hashComputer = new HashComputer(this.targetHash);
+    constructor(indexFilePath: string,private targetHash: CID_ALGORITHM_NAMES[] = [CID_ALGORITHM_NAMES.sha1, CID_ALGORITHM_NAMES.sha256],workerPath?:string) {
+        this.hashComputer = new HashComputer(this.targetHash,workerPath);
         this.hashIndexManager = new HashIndexManager(indexFilePath);
     }
 

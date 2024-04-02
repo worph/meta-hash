@@ -2,7 +2,8 @@ import {defineConfig} from 'tsup'
 
 export default defineConfig({
   entry: {
-    'index': 'src/lib/index.ts'
+    'index': 'src/lib/index.ts',
+    'worker': 'src/lib/fileID/ShaComputeWorker.ts',
   },
   splitting: true,
   treeshake: true,

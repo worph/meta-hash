@@ -1,10 +1,11 @@
-import { FileIDComputer } from "./fileID/FileIDComputer.js";
-import {CID_ALGORITHM_NAMES, ComputeInterface, MultiHashData} from "./MultiHashData.js";
+import { FileIDComputer } from "./fileID/FileIDComputer";
+import {CID_ALGORITHM_NAMES, ComputeInterface, MultiHashData} from "./MultiHashData";
 
 export class HashComputer implements ComputeInterface{
-    private fileIDComputer = new FileIDComputer();
+    private fileIDComputer:FileIDComputer;
 
-    constructor(private targetHash: CID_ALGORITHM_NAMES[]) {
+    constructor(private targetHash: CID_ALGORITHM_NAMES[],workerPath?:string) {
+        this.fileIDComputer = new FileIDComputer(workerPath);
     }
 
     async computeMissingHash(filePath: string, metadata: MultiHashData): Promise<void> {

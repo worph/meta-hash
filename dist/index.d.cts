@@ -1,37 +1,11 @@
-import { BinaryLike } from 'crypto';
-
-interface MultiHashData {
-    "cid_sha2-256"?: string;
-    cid_sha1?: string;
-    cid_md5?: string;
-    "cid_sha3-256"?: string;
-}
-interface ComputeInterface {
-    computeMissingHash(filePath: string, metadata: MultiHashData): Promise<void>;
-}
-declare enum CID_ALGORITHM_CODES {
-    sha256 = 18,
-    sha1 = 17,
-    md5 = 213,
-    sha3_256 = 22
-}
-declare enum CID_ALGORITHM_NAMES {
-    sha256 = "cid_sha2-256",
-    sha1 = "cid_sha1",
-    md5 = "cid_md5",
-    sha3_256 = "cid_sha3-256"
-}
-declare enum CID_ALGORITHM {
-    sha256 = "sha2-256",
-    sha1 = "sha1",
-    md5 = "md5",
-    sha3_256 = "sha3-256"
-}
+import { C as ComputeInterface, a as CID_ALGORITHM_NAMES, M as MultiHashData } from './ShaComputeWorker-DWOF-qaH.cjs';
+export { c as CID_ALGORITHM, b as CID_ALGORITHM_CODES, S as SimpleHash } from './ShaComputeWorker-DWOF-qaH.cjs';
+import 'crypto';
 
 declare class HashComputer implements ComputeInterface {
     private targetHash;
     private fileIDComputer;
-    constructor(targetHash: CID_ALGORITHM_NAMES[]);
+    constructor(targetHash: CID_ALGORITHM_NAMES[], workerPath?: string);
     computeMissingHash(filePath: string, metadata: MultiHashData): Promise<void>;
 }
 
@@ -75,7 +49,7 @@ declare class ComputeHashIndexCache implements ComputeInterface {
     private targetHash;
     hashIndexManager: HashIndexManager;
     hashComputer: HashComputer;
-    constructor(indexFilePath: string, targetHash?: CID_ALGORITHM_NAMES[]);
+    constructor(indexFilePath: string, targetHash?: CID_ALGORITHM_NAMES[], workerPath?: string);
     computeMissingHash(filePath: string, metadata: MultiHashData): Promise<void>;
 }
 
@@ -83,7 +57,7 @@ declare function existsAsync(filePath: string): Promise<boolean>;
 
 declare class FileIDComputer {
     private piscina;
-    constructor();
+    constructor(workerPath?: string);
     /**
      * Compute the CIDs of a file using specific algorithms
      * @param filePath The path to the file
@@ -93,14 +67,9 @@ declare class FileIDComputer {
     computeCIDs(filePath: string, algorithms: CID_ALGORITHM_NAMES[]): Promise<string[]>;
 }
 
-interface SimpleHash {
-    update(data: BinaryLike): any;
-    digest(): Buffer;
-}
-
 interface Properties {
     TARGET_HASHES: string;
     INDEX_FILE_PATH: string;
 }
 
-export { CID_ALGORITHM, CID_ALGORITHM_CODES, CID_ALGORITHM_NAMES, ComputeHashIndexCache, type ComputeInterface, FileIDComputer, HashComputer, HashIndexManager, INDEX_HEADERS, type MultiHashData, type Properties, type SimpleHash, existsAsync };
+export { CID_ALGORITHM_NAMES, ComputeHashIndexCache, ComputeInterface, FileIDComputer, HashComputer, HashIndexManager, INDEX_HEADERS, MultiHashData, type Properties, existsAsync };

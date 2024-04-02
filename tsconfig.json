@@ -3,7 +3,7 @@
       "noImplicitAny": false,
       "outDir": "build/",
       "module": "esnext",
-      "target": "es6",
+      "target": "esnext",
       "allowJs": true,
       "sourceMap": true,
       "declaration": true,
