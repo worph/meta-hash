@@ -1,5 +1,8 @@
 import { C as ComputeInterface, a as CID_ALGORITHM_NAMES, M as MultiHashData } from './ShaComputeWorker-DWOF-qaH.cjs';
 export { c as CID_ALGORITHM, b as CID_ALGORITHM_CODES, S as SimpleHash } from './ShaComputeWorker-DWOF-qaH.cjs';
+import * as PQueue from 'p-queue';
+import PQueue__default from 'p-queue';
+import * as p_queue_dist_priority_queue_js from 'p-queue/dist/priority-queue.js';
 import 'crypto';
 
 declare class HashComputer implements ComputeInterface {
@@ -72,4 +75,43 @@ interface Properties {
     INDEX_FILE_PATH: string;
 }
 
-export { CID_ALGORITHM_NAMES, ComputeHashIndexCache, ComputeInterface, FileIDComputer, HashComputer, HashIndexManager, INDEX_HEADERS, MultiHashData, type Properties, existsAsync };
+interface FileProcessorInterface {
+    processFile(current: number, queueSize: number, nfoFilePath: string): Promise<void>;
+    canProcessFile(filePath: string): Promise<boolean>;
+    deleteFile(filePath: string): Promise<void>;
+}
+
+declare class FolderWatcher {
+    private WATCH_FOLDER_LIST;
+    private config;
+    initialized: boolean;
+    queue: PQueue__default<p_queue_dist_priority_queue_js.default, PQueue.QueueAddOptions>;
+    fileProcessor: FileProcessorInterface;
+    queueSize: number;
+    current: number;
+    processing: Set<string>;
+    constructor(fileProcessor: FileProcessorInterface, WATCH_FOLDER_LIST: string, config: {
+        interval?: number;
+        stabilityThreshold?: number;
+        pollInterval?: number;
+    });
+    /**
+     * Process the directory and its subdirectories
+     * @param directory
+     * @param promises
+     * @private
+     */
+    private processDirectory;
+    private countFile;
+    private processFile;
+    /**
+     * Process the file and its sibling file included other folder it is a recursive function
+     * @param filePath
+     * @private
+     */
+    private processFileExtended;
+    private chokidarWatch;
+    watch(): Promise<void>;
+}
+
+export { CID_ALGORITHM_NAMES, ComputeHashIndexCache, ComputeInterface, FileIDComputer, type FileProcessorInterface, FolderWatcher, HashComputer, HashIndexManager, INDEX_HEADERS, MultiHashData, type Properties, existsAsync };

@@ -9,3 +9,5 @@ export * from './HashIndexManager.js';
 export * from './MultiHashData.js';
 // Assuming Properties.ts exports one or more interfaces; adjust as needed
 export * from './Properties.js';
+export * from './folder_watcher/FolderWatcher.js';
+export * from './folder_watcher/FileProcessorInterface.js';

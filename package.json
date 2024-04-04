@@ -40,9 +40,11 @@
   },
   "packageManager": "yarn@4.1.1",
   "dependencies": {
+    "chokidar": "^3.6.0",
     "csv-parse": "^5.5.5",
     "csv-stringify": "^6.4.6",
     "multiformats": "^13.1.0",
+    "p-queue": "^8.0.1",
     "piscina": "^4.4.0"
   }
 }
