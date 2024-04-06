@@ -21,7 +21,6 @@ class Crc32Hash implements SimpleHash {
     }
 
     digest(): Buffer {
-        console.log((this._crc>>>0).toString(16))  ;
         const buffer = Buffer.alloc(4); // Create a buffer of 4 bytes (32 bits)
         buffer.writeInt32BE(this._crc, 0); // Write the unsigned integer to the buffer in big-endian format
         return buffer;

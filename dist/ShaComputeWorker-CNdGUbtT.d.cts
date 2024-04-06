@@ -1,9 +1,10 @@
 interface MultiHashData {
-    "cid_sha2-256"?: string;
-    cid_sha1?: string;
-    cid_md5?: string;
-    "cid_sha3-256"?: string;
     cid_crc32?: string;
+    cid_md5?: string;
+    cid_sha1?: string;
+    "cid_sha2-256"?: string;
+    "cid_sha3-256"?: string;
+    "cid_sha3_384"?: string;
 }
 interface ComputeInterface {
     computeMissingHash(filePath: string, metadata: MultiHashData): Promise<void>;

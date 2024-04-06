@@ -1,9 +1,9 @@
 'use strict';
 
-var chunkA5PD5ID4_cjs = require('./chunk-A5PD5ID4.cjs');
+var chunkASEKTFOG_cjs = require('./chunk-ASEKTFOG.cjs');
 
 
 
-module.exports = chunkA5PD5ID4_cjs.d;
+module.exports = chunkASEKTFOG_cjs.d;
 //# sourceMappingURL=out.js.map
 //# sourceMappingURL=worker.cjs.map

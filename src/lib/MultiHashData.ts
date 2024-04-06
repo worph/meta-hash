@@ -1,9 +1,10 @@
 export interface MultiHashData {
-    "cid_sha2-256"?: string;//0x12 sha2-256
-    cid_sha1?: string; // 0x11 sha1
-    cid_md5?: string; // 0xd5 md5
-    "cid_sha3-256"?: string; // 0x16 sha3-256
     cid_crc32?: string; //0x0132 CRC32 (SFV)
+    cid_md5?: string; // 0xd5 md5
+    cid_sha1?: string; // 0x11 sha1
+    "cid_sha2-256"?: string;//0x12 sha2-256
+    "cid_sha3-256"?: string; // 0x16 sha3-256
+    "cid_sha3_384"?: string; // 0x16 sha3-256
 }
 
 export interface ComputeInterface {

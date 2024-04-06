@@ -273,7 +273,12 @@ export class HashIndexManager {
         const baseName = path.basename(filePath);
         let indexLine = this.cache.get(baseName);
         if (!indexLine) {
-            const data = {path: baseName, size: size, mtime: mtime, ...hashs};
+            //filter only the hashes we need
+            let filteredHash = {};
+            for (const hash of this.targetHash) {
+                filteredHash[hash] = hashs[hash];
+            }
+            const data = {path: baseName, size: size, mtime: mtime, ...filteredHash};
             this.cache.set(baseName, data);
         } else {
             //update the cache with the latest data

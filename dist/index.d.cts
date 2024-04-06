@@ -1,5 +1,5 @@
-import { C as CID_ALGORITHM_NAMES, a as ComputeInterface, M as MultiHashData } from './ShaComputeWorker-BzBitaFi.cjs';
-export { c as CID_ALGORITHM, b as CID_ALGORITHM_CODES, S as SimpleHash } from './ShaComputeWorker-BzBitaFi.cjs';
+import { C as CID_ALGORITHM_NAMES, a as ComputeInterface, M as MultiHashData } from './ShaComputeWorker-CNdGUbtT.cjs';
+export { c as CID_ALGORITHM, b as CID_ALGORITHM_CODES, S as SimpleHash } from './ShaComputeWorker-CNdGUbtT.cjs';
 import * as PQueue from 'p-queue';
 import PQueue__default from 'p-queue';
 import * as p_queue_dist_priority_queue_js from 'p-queue/dist/priority-queue.js';

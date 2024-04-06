@@ -1,10 +1,10 @@
-import { FileIDComputer } from "./fileID/FileIDComputer";
+import {FileIDComputer} from "./fileID/FileIDComputer";
 import {CID_ALGORITHM_NAMES, ComputeInterface, MultiHashData} from "./MultiHashData";
 
-export class HashComputer implements ComputeInterface{
-    private fileIDComputer:FileIDComputer;
+export class HashComputer implements ComputeInterface {
+    private fileIDComputer: FileIDComputer;
 
-    constructor(private targetHash: CID_ALGORITHM_NAMES[],workerPath?:string) {
+    constructor(private targetHash: CID_ALGORITHM_NAMES[], workerPath?: string) {
         this.fileIDComputer = new FileIDComputer(workerPath);
     }
 
@@ -21,9 +21,9 @@ export class HashComputer implements ComputeInterface{
         const cids = await this.fileIDComputer.computeCIDs(filePath, neededHashes);
 
         // Map the computed CIDs back to their respective metadata properties
-        cids.forEach((cid, index) => {
+        for (const [index, cid] of cids.entries()) {
             const hashType = neededHashes[index];
             metadata[hashType] = cid;
-        });
+        }
     }
 }
