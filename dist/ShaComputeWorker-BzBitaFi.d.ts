@@ -52,4 +52,4 @@ declare function computeCIDs({ filePath, algorithms }: {
     algorithms: CID_ALGORITHM_NAMES[];
 }): Promise<string[]>;
 
-export { type ComputeInterface as C, type MultiHashData as M, type SimpleHash as S, CID_ALGORITHM_NAMES as a, CID_ALGORITHM_CODES as b, CID_ALGORITHM as c, computeCIDs as d };
+export { CID_ALGORITHM_NAMES as C, type MultiHashData as M, type SimpleHash as S, type ComputeInterface as a, CID_ALGORITHM_CODES as b, CID_ALGORITHM as c, computeCIDs as d };

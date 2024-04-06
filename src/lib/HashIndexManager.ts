@@ -6,6 +6,7 @@ import {existsAsync} from "./ExistsAsync";
 import path from "path";
 import {clearInterval} from "node:timers";
 import {CID_ALGORITHM_NAMES} from "./MultiHashData";
+import {stat} from "fs/promises";
 
 interface IndexLine extends Partial<Record<CID_ALGORITHM_NAMES, string>> {
     path: string;
@@ -163,7 +164,7 @@ export class HashIndexManager {
         });
     }
 
-    private async saveCacheToFile(): Promise<void> {
+    public async saveCacheToFile(): Promise<void> {
         if (this.indexOpsInProgress || !this.hasChanged) {
             return;
         }
@@ -204,6 +205,34 @@ export class HashIndexManager {
         }
         this.indexOpsInProgress = false;
     }
+
+    public async getCidForFileAsync(filePath: string): Promise<IndexLine> {
+        const fileName = path.basename(filePath);
+        const stats = await stat(filePath);
+        let fileNameIndex = this.cache.get(fileName);
+        if (fileNameIndex) {
+            if (fileNameIndex.mtime) {
+                //if we have a mtime, we need to check it
+                if (fileNameIndex.size === (stats.size + "") && fileNameIndex.mtime === stats.mtime.toISOString()) {
+                    return fileNameIndex;
+                }
+            } else {
+                //mtime is optional
+                if (fileNameIndex.size === (stats.size + "")) {
+                    return fileNameIndex;
+                }
+            }
+        }
+
+        // 3 - if not found, delete the entry (keeps the index clean)
+        /*if (fileNameIndex && fileNameIndex.size !== (fileSize + "") && pathIndex && pathIndex.size !== (fileSize + "")) {
+            this.cache.delete(fileName);
+            this.cache.delete(filePath);
+        }*/
+
+        return null;
+    }
+
 
     public getCidForFile(filePath: string, fileSize: number, mtime: string): IndexLine {
         const fileName = path.basename(filePath);

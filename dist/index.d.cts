@@ -1,15 +1,8 @@
-import { C as ComputeInterface, a as CID_ALGORITHM_NAMES, M as MultiHashData } from './ShaComputeWorker-DxWHpwX4.cjs';
-export { c as CID_ALGORITHM, b as CID_ALGORITHM_CODES, S as SimpleHash } from './ShaComputeWorker-DxWHpwX4.cjs';
+import { C as CID_ALGORITHM_NAMES, a as ComputeInterface, M as MultiHashData } from './ShaComputeWorker-BzBitaFi.cjs';
+export { c as CID_ALGORITHM, b as CID_ALGORITHM_CODES, S as SimpleHash } from './ShaComputeWorker-BzBitaFi.cjs';
 import * as PQueue from 'p-queue';
 import PQueue__default from 'p-queue';
 import * as p_queue_dist_priority_queue_js from 'p-queue/dist/priority-queue.js';
-
-declare class HashComputer implements ComputeInterface {
-    private targetHash;
-    private fileIDComputer;
-    constructor(targetHash: CID_ALGORITHM_NAMES[], workerPath?: string);
-    computeMissingHash(filePath: string, metadata: MultiHashData): Promise<void>;
-}
 
 interface IndexLine extends Partial<Record<CID_ALGORITHM_NAMES, string>> {
     path: string;
@@ -42,17 +35,19 @@ declare class HashIndexManager {
     loadIndex(hash: CID_ALGORITHM_NAMES): Promise<IndexLine[]>;
     private loadIndexFromCache;
     private readCsv;
-    private saveCacheToFile;
+    saveCacheToFile(): Promise<void>;
+    getCidForFileAsync(filePath: string): Promise<IndexLine>;
     getCidForFile(filePath: string, fileSize: number, mtime: string): IndexLine;
     addFileCid(filePath: string, fileSize: number, mtime: string, hashs: Partial<Record<CID_ALGORITHM_NAMES, string>>): void;
 }
 
 declare class ComputeHashIndexCache implements ComputeInterface {
     private targetHash;
-    hashIndexManager: HashIndexManager;
-    hashComputer: HashComputer;
+    private hashIndexManager;
+    private hashComputer;
     constructor(indexFilePath: string, targetHash?: CID_ALGORITHM_NAMES[], workerPath?: string);
     computeMissingHash(filePath: string, metadata: MultiHashData): Promise<void>;
+    getHashIndexManager(): Promise<HashIndexManager>;
 }
 
 declare function existsAsync(filePath: string): Promise<boolean>;
@@ -67,6 +62,13 @@ declare class FileIDComputer {
      * @returns Array of CIDs (in the order of the algorithms)
      */
     computeCIDs(filePath: string, algorithms: CID_ALGORITHM_NAMES[]): Promise<string[]>;
+}
+
+declare class HashComputer implements ComputeInterface {
+    private targetHash;
+    private fileIDComputer;
+    constructor(targetHash: CID_ALGORITHM_NAMES[], workerPath?: string);
+    computeMissingHash(filePath: string, metadata: MultiHashData): Promise<void>;
 }
 
 interface Properties {

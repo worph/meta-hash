@@ -5,15 +5,15 @@ import {stat} from "fs/promises";
 import path from "path";
 
 export class ComputeHashIndexCache implements ComputeInterface {
-    hashIndexManager: HashIndexManager;
-    hashComputer: HashComputer;
+    private hashIndexManager: HashIndexManager;
+    private hashComputer: HashComputer;
 
     constructor(indexFilePath: string,private targetHash: CID_ALGORITHM_NAMES[] = [CID_ALGORITHM_NAMES.sha1, CID_ALGORITHM_NAMES.sha256],workerPath?:string) {
         this.hashComputer = new HashComputer(targetHash,workerPath);
         this.hashIndexManager = new HashIndexManager(indexFilePath,targetHash);
     }
 
-    async computeMissingHash(filePath: string, metadata: MultiHashData): Promise<void> {
+    public async computeMissingHash(filePath: string, metadata: MultiHashData): Promise<void> {
         await this.hashIndexManager.init();
         let stats = await stat(filePath);
         if (this.hashIndexManager.getCache().has(path.basename(filePath))) {
@@ -28,5 +28,10 @@ export class ComputeHashIndexCache implements ComputeInterface {
         }
         await this.hashComputer.computeMissingHash(filePath, metadata);
         this.hashIndexManager.addFileCid(filePath, stats.size, stats.mtime.toISOString(), metadata);
+    }
+
+    async getHashIndexManager(): Promise<HashIndexManager> {
+        await this.hashIndexManager.init();
+        return this.hashIndexManager;
     }
 }
