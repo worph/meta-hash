@@ -172,12 +172,21 @@ export class HashIndexManager {
         this.indexOpsInProgress = true;
         const start = performance.now();
 
+        let cacheRows: IndexLine[];
+        if (this.cache.size !== 0) {
+            cacheRows = this.loadIndexFromCache();
+        }
+
         for (const hash of this.targetHash) {
             let existingRows: IndexLine[] = await this.loadIndex(hash);
+            let existingRowsAsMap: Map<string, IndexLine> = new Map(existingRows.map(row => [row.path, row]));
             if (this.cache.size !== 0) {
-                const cacheRows: IndexLine[] = this.loadIndexFromCache();
                 // Filter out cacheRows that are already in the file
-                const newRows = cacheRows.filter(row => !existingRows.find(existingRow => existingRow.path === row.path));
+                const newRows = cacheRows.filter(row => {
+                    //to be added a row must not exist in the file and must exist in the cache (with a hash)
+                    const newRow = !existingRowsAsMap.has(row.path);
+                    return newRow && !!row[hash];
+                });
 
                 if (newRows.length !== 0) {
                     // Serialize new cacheRows to CSV string
@@ -196,6 +205,7 @@ export class HashIndexManager {
                 }
             }
         }
+
         const totalTime = performance.now() - start;
         console.log(`Index saved in ${totalTime}ms`);
         // Check if the time to save the index is greater than the interval time. increase the interval time if needed
@@ -209,34 +219,17 @@ export class HashIndexManager {
     public async getCidForFileAsync(filePath: string): Promise<IndexLine> {
         const fileName = path.basename(filePath);
         const stats = await stat(filePath);
-        let fileNameIndex = this.cache.get(fileName);
-        if (fileNameIndex) {
-            if (fileNameIndex.mtime) {
-                //if we have a mtime, we need to check it
-                if (fileNameIndex.size === (stats.size + "") && fileNameIndex.mtime === stats.mtime.toISOString()) {
-                    return fileNameIndex;
-                }
-            } else {
-                //mtime is optional
-                if (fileNameIndex.size === (stats.size + "")) {
-                    return fileNameIndex;
-                }
-            }
-        }
-
-        // 3 - if not found, delete the entry (keeps the index clean)
-        /*if (fileNameIndex && fileNameIndex.size !== (fileSize + "") && pathIndex && pathIndex.size !== (fileSize + "")) {
-            this.cache.delete(fileName);
-            this.cache.delete(filePath);
-        }*/
-
-        return null;
+        return this.getCidForFile(fileName, stats.size, stats.mtime.toISOString());
     }
-
 
     public getCidForFile(filePath: string, fileSize: number, mtime: string): IndexLine {
         const fileName = path.basename(filePath);
         let fileNameIndex = this.cache.get(fileName);
+        for (const hash of this.targetHash) {
+            if (!fileNameIndex[hash]) {
+                delete fileNameIndex[hash];
+            }
+        }
         if (fileNameIndex) {
             if (fileNameIndex.mtime) {
                 //if we have a mtime, we need to check it
