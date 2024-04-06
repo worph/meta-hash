@@ -12,6 +12,7 @@ interface IndexLine extends Partial<Record<CID_ALGORITHM_NAMES, string>> {
     size: string;
     mtime: string;
 }
+
 export const INDEX_HEADERS = ['path', 'size', 'mtime'];
 
 export class HashIndexManager {
@@ -22,11 +23,16 @@ export class HashIndexManager {
     private lastCacheFile: IndexLine[]; //state of the file last time it was read
     private indexOpsInProgress: boolean = false;
     private hasChanged: boolean = false;
-    private initialLoad;
+    private initialLoad: Promise<void>;
+    private filePaths: { [key in CID_ALGORITHM_NAMES]?: string } = {};
 
-    constructor(private filePath: string,private targetHash:CID_ALGORITHM_NAMES[]= [CID_ALGORITHM_NAMES.sha1,CID_ALGORITHM_NAMES.sha256]) {
-        if (!filePath) {
-            throw new Error('Invalid index file path');
+    constructor(filePath: string, private targetHash: CID_ALGORITHM_NAMES[] = [CID_ALGORITHM_NAMES.sha1, CID_ALGORITHM_NAMES.sha256]) {
+        filePath = filePath.replace(".csv", "");
+        for (const hash of this.targetHash) {
+            this.filePaths[hash] = `${filePath}-${hash}.csv`;
+            if (!this.filePaths[hash]) {
+                throw new Error(`Invalid index file path for ${hash}`);
+            }
         }
     }
 
@@ -38,19 +44,21 @@ export class HashIndexManager {
      * After init consseutively calls to this method will not reload the index
      * @param autosave
      */
-    async init(autosave = true) {
+    public async init(autosave = true) {
         if (!this.initialLoad) {
             this.initialLoad = new Promise<void>(async (resolve, reject) => {
                 try {
-                    if (!this.checkCSVHeaders(this.filePath)) {
-                        throw new Error('Invalid index file headers');
+                    for (const hash of this.targetHash) {
+                        if (!this.checkCSVHeaders(this.filePaths[hash], hash)) {
+                            throw new Error(`Invalid index file headers for ${hash}`);
+                        }
+                        await this.loadIndex(hash);
                     }
-                    await this.loadIndex();
                     if (autosave) {
                         this.start();
                     }
                     resolve();
-                }catch (e) {
+                } catch (e) {
                     reject(e);
                 }
             });
@@ -59,7 +67,7 @@ export class HashIndexManager {
     }
 
     // Function to check CSV headers
-    checkCSVHeaders (csvContent: string): boolean {
+    private checkCSVHeaders(csvContent: string, hash: CID_ALGORITHM_NAMES): boolean {
         const records = parseSync(csvContent, {
             bom: true,
             columns: true,
@@ -76,7 +84,7 @@ export class HashIndexManager {
 
         // Define required headers
         //from the IndexLine interface
-        const requiredHeaders = ['path', 'size', 'mtime', ...this.targetHash];
+        const requiredHeaders = [...INDEX_HEADERS, hash];
 
         // Check if all required headers are present
         return requiredHeaders.every(header => headers.includes(header));
@@ -98,15 +106,21 @@ export class HashIndexManager {
         this.intervalId = setInterval(() => this.saveCacheToFile(), time);
     }
 
-    public async loadIndex(): Promise<IndexLine[]> {
-        if (await existsAsync(this.filePath)) {
+    public async loadIndex(hash: CID_ALGORITHM_NAMES): Promise<IndexLine[]> {
+        if (await existsAsync(this.filePaths[hash])) {
             // check the file size and if it did not change, do not read the file
-            const stats = await fs.stat(this.filePath);
+            const stats = await fs.stat(this.filePaths[hash]);
             if (this.lastIndexFileSize !== stats.size) {
                 // Read existing file content and parse it
-                const records: IndexLine[] = await this.readCsv();
+                const records: IndexLine[] = await this.readCsv(hash);
                 for (const record of records) {
-                    this.cache.set(record.path, record);
+                    let indexLine = this.cache.get(record.path);
+                    if (!indexLine) {
+                        this.cache.set(record.path, record);
+                    } else {
+                        //update the cache with the latest data
+                        indexLine[hash] = record[hash];
+                    }
                 }
                 this.lastIndexFileSize = stats.size;
                 this.lastCacheFile = records;
@@ -122,8 +136,8 @@ export class HashIndexManager {
         return Array.from(this.cache.values());
     }
 
-    private async readCsv(): Promise<IndexLine[]> {
-        if (!(await existsAsync(this.filePath))) {
+    private async readCsv(hash: CID_ALGORITHM_NAMES): Promise<IndexLine[]> {
+        if (!(await existsAsync(this.filePaths[hash]))) {
             return [];
         }
         const start = performance.now();
@@ -136,13 +150,13 @@ export class HashIndexManager {
         const records: IndexLine[] = [];
 
         return new Promise((resolve, reject) => {
-            createReadStream(this.filePath)
+            createReadStream(this.filePaths[hash])
                 .pipe(parser)
                 .on('data', (record) => {
                     records.push(record);
                 }).on('end', () => {
                 resolve(records);
-                console.log(`Index read time ${performance.now() - start}ms`);
+                console.log(`Index read ${hash} time ${performance.now() - start}ms`);
             }).on('error', (err) => {
                 reject(err);
             });
@@ -156,27 +170,29 @@ export class HashIndexManager {
         this.hasChanged = false;
         this.indexOpsInProgress = true;
         const start = performance.now();
-        let existingRows: IndexLine[] = await this.loadIndex();
 
-        if (this.cache.size !== 0) {
-            const cacheRows: IndexLine[] = this.loadIndexFromCache();
-            // Filter out cacheRows that are already in the file
-            const newRows = cacheRows.filter(row => !existingRows.find(existingRow => existingRow.path === row.path));
+        for (const hash of this.targetHash) {
+            let existingRows: IndexLine[] = await this.loadIndex(hash);
+            if (this.cache.size !== 0) {
+                const cacheRows: IndexLine[] = this.loadIndexFromCache();
+                // Filter out cacheRows that are already in the file
+                const newRows = cacheRows.filter(row => !existingRows.find(existingRow => existingRow.path === row.path));
 
-            if (newRows.length !== 0) {
-                // Serialize new cacheRows to CSV string
-                const csvString = stringify(newRows, {
-                    header: existingRows.length === 0, // Only add header if the file was empty
-                    columns: [
-                        {key: 'path', header: 'path'},
-                        {key: 'size', header: 'size'},
-                        {key: 'mtime', header: 'mtime'},
-                        ...this.targetHash.map(hash => ({key: hash, header: hash})),
-                    ],
-                });
+                if (newRows.length !== 0) {
+                    // Serialize new cacheRows to CSV string
+                    const csvString = stringify(newRows, {
+                        header: existingRows.length === 0, // Only add header if the file was empty
+                        columns: [
+                            {key: 'path', header: 'path'},
+                            {key: 'size', header: 'size'},
+                            {key: 'mtime', header: 'mtime'},
+                            {key: hash, header: hash},
+                        ],
+                    });
 
-                // Append new cacheRows to the file
-                await fs.appendFile(this.filePath, csvString);
+                    // Append new cacheRows to the file
+                    await fs.appendFile(this.filePaths[hash], csvString);
+                }
             }
         }
         const totalTime = performance.now() - start;
@@ -192,13 +208,13 @@ export class HashIndexManager {
     public getCidForFile(filePath: string, fileSize: number, mtime: string): IndexLine {
         const fileName = path.basename(filePath);
         let fileNameIndex = this.cache.get(fileName);
-        if(fileNameIndex) {
-            if(fileNameIndex.mtime) {
+        if (fileNameIndex) {
+            if (fileNameIndex.mtime) {
                 //if we have a mtime, we need to check it
                 if (fileNameIndex.size === (fileSize + "") && fileNameIndex.mtime === mtime) {
                     return fileNameIndex;
                 }
-            }else {
+            } else {
                 //mtime is optional
                 if (fileNameIndex.size === (fileSize + "")) {
                     return fileNameIndex;
@@ -219,10 +235,23 @@ export class HashIndexManager {
         if (!filePath || !fileSize || !mtime || !hashs) {
             throw new Error('Invalid parameters');
         }
+        for (const hash of this.targetHash) {
+            if (!hashs[hash]) {
+                throw new Error(`Missing hash ${hash}`);
+            }
+        }
         const size = fileSize + "";
         const baseName = path.basename(filePath);
-        const data = {path: baseName, size: size, mtime: mtime, ...hashs};
-        this.cache.set(baseName, data);
+        let indexLine = this.cache.get(baseName);
+        if (!indexLine) {
+            const data = {path: baseName, size: size, mtime: mtime, ...hashs};
+            this.cache.set(baseName, data);
+        } else {
+            //update the cache with the latest data
+            for (const hash of this.targetHash) {
+                indexLine[hash] = hashs[hash];
+            }
+        }
         this.hasChanged = true;
     }
 

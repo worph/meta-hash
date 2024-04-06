@@ -1,9 +1,8 @@
-import { C as ComputeInterface, a as CID_ALGORITHM_NAMES, M as MultiHashData } from './ShaComputeWorker-DWOF-qaH.cjs';
-export { c as CID_ALGORITHM, b as CID_ALGORITHM_CODES, S as SimpleHash } from './ShaComputeWorker-DWOF-qaH.cjs';
+import { C as ComputeInterface, a as CID_ALGORITHM_NAMES, M as MultiHashData } from './ShaComputeWorker-DxWHpwX4.cjs';
+export { c as CID_ALGORITHM, b as CID_ALGORITHM_CODES, S as SimpleHash } from './ShaComputeWorker-DxWHpwX4.cjs';
 import * as PQueue from 'p-queue';
 import PQueue__default from 'p-queue';
 import * as p_queue_dist_priority_queue_js from 'p-queue/dist/priority-queue.js';
-import 'crypto';
 
 declare class HashComputer implements ComputeInterface {
     private targetHash;
@@ -19,7 +18,6 @@ interface IndexLine extends Partial<Record<CID_ALGORITHM_NAMES, string>> {
 }
 declare const INDEX_HEADERS: string[];
 declare class HashIndexManager {
-    private filePath;
     private targetHash;
     private cache;
     private intervalId;
@@ -29,18 +27,19 @@ declare class HashIndexManager {
     private indexOpsInProgress;
     private hasChanged;
     private initialLoad;
+    private filePaths;
     constructor(filePath: string, targetHash?: CID_ALGORITHM_NAMES[]);
     getCache(): Map<string, IndexLine>;
     /**
      * After init consseutively calls to this method will not reload the index
      * @param autosave
      */
-    init(autosave?: boolean): Promise<any>;
-    checkCSVHeaders(csvContent: string): boolean;
+    init(autosave?: boolean): Promise<void>;
+    private checkCSVHeaders;
     start(): void;
     stopAutoSave(): void;
     private startAutoSave;
-    loadIndex(): Promise<IndexLine[]>;
+    loadIndex(hash: CID_ALGORITHM_NAMES): Promise<IndexLine[]>;
     private loadIndexFromCache;
     private readCsv;
     private saveCacheToFile;
