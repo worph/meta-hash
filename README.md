@@ -25,7 +25,7 @@ To use Meta-Hash in your project, clone this repository and install the required
 
 ```bash
 #to install
-yarn add metazla@git@github.com:Metazla/meta-hash.git
+yarn add @metazla/meta-hash@git@github.com:Metazla/meta-hash.git
 
 #to update
 yarn up -i @metazla/meta-hash
