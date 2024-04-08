@@ -1,5 +1,6 @@
 import {Piscina} from "piscina";
-import {CID_ALGORITHM_NAMES} from "../MultiHashData";
+import {CID_ALGORITHM_NAMES} from "../hash-compute/MultiHashData";
+import {FileIDComputerInterface} from "@root/file-id/FileIDComputerInterface";
 
 // Construct the URL for the current module
 let distFolder = import.meta.dirname;
@@ -8,7 +9,7 @@ distFolder = distFolder + "/worker.js";
 const workerUrl = new URL(distFolder).href;
 console.log("Worker URL: ", workerUrl);
 
-export class FileIDComputer {
+export class FileIDComputerWorker{
     private piscina: Piscina;
 
     constructor(workerPath?:string) {

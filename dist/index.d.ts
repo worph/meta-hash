@@ -1,8 +1,23 @@
-import { C as CID_ALGORITHM_NAMES, a as ComputeInterface, M as MultiHashData } from './ShaComputeWorker-CNdGUbtT.js';
-export { c as CID_ALGORITHM, b as CID_ALGORITHM_CODES, S as SimpleHash } from './ShaComputeWorker-CNdGUbtT.js';
+import { C as CID_ALGORITHM_NAMES, a as ComputeInterface, M as MultiHashData } from './MultiHashData-B-scpa5G.js';
+export { c as CID_ALGORITHM, b as CID_ALGORITHM_CODES } from './MultiHashData-B-scpa5G.js';
 import * as PQueue from 'p-queue';
 import PQueue__default from 'p-queue';
 import * as p_queue_dist_priority_queue_js from 'p-queue/dist/priority-queue.js';
+import { FileProcessorInterface } from './index-interface.js';
+export { FileIDComputerInterface } from './index-interface.js';
+import 'stream';
+
+declare class FileIDComputerWorker {
+    private piscina;
+    constructor(workerPath?: string);
+    /**
+     * Compute the CIDs of a file using specific algorithms
+     * @param filePath The path to the file
+     * @param algorithms Array of algorithms ('sha256', 'sha1')
+     * @returns Array of CIDs (in the order of the algorithms)
+     */
+    computeCIDs(filePath: string, algorithms: CID_ALGORITHM_NAMES[]): Promise<string[]>;
+}
 
 interface IndexLine extends Partial<Record<CID_ALGORITHM_NAMES, string>> {
     path: string;
@@ -41,7 +56,7 @@ declare class HashIndexManager {
     addFileCid(filePath: string, fileSize: number, mtime: string, hashs: Partial<Record<CID_ALGORITHM_NAMES, string>>): void;
 }
 
-declare class ComputeHashIndexCache implements ComputeInterface {
+declare class HashComputerIndexCache implements ComputeInterface {
     private targetHash;
     private hashIndexManager;
     private hashComputer;
@@ -50,36 +65,11 @@ declare class ComputeHashIndexCache implements ComputeInterface {
     getHashIndexManager(): Promise<HashIndexManager>;
 }
 
-declare function existsAsync(filePath: string): Promise<boolean>;
-
-declare class FileIDComputer {
-    private piscina;
-    constructor(workerPath?: string);
-    /**
-     * Compute the CIDs of a file using specific algorithms
-     * @param filePath The path to the file
-     * @param algorithms Array of algorithms ('sha256', 'sha1')
-     * @returns Array of CIDs (in the order of the algorithms)
-     */
-    computeCIDs(filePath: string, algorithms: CID_ALGORITHM_NAMES[]): Promise<string[]>;
-}
-
-declare class HashComputer implements ComputeInterface {
+declare class HashComputerWorker implements ComputeInterface {
     private targetHash;
     private fileIDComputer;
     constructor(targetHash: CID_ALGORITHM_NAMES[], workerPath?: string);
     computeMissingHash(filePath: string, metadata: MultiHashData): Promise<void>;
-}
-
-interface Properties {
-    TARGET_HASHES: string;
-    INDEX_FILE_PATH: string;
-}
-
-interface FileProcessorInterface {
-    processFile(current: number, queueSize: number, nfoFilePath: string): Promise<void>;
-    canProcessFile(filePath: string): Promise<boolean>;
-    deleteFile(filePath: string): Promise<void>;
 }
 
 declare class FolderWatcher {
@@ -115,4 +105,4 @@ declare class FolderWatcher {
     watch(): Promise<void>;
 }
 
-export { CID_ALGORITHM_NAMES, ComputeHashIndexCache, ComputeInterface, FileIDComputer, type FileProcessorInterface, FolderWatcher, HashComputer, HashIndexManager, INDEX_HEADERS, MultiHashData, type Properties, existsAsync };
+export { CID_ALGORITHM_NAMES, ComputeInterface, FileIDComputerWorker, FileProcessorInterface, FolderWatcher, HashComputerIndexCache, HashComputerWorker, HashIndexManager, INDEX_HEADERS, MultiHashData };

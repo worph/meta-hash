@@ -38,19 +38,4 @@ declare enum CID_ALGORITHM {
     sha3_384 = "sha3-384"
 }
 
-interface SimpleHash {
-    update(data: Buffer): any;
-    digest(): Buffer;
-}
-/**
- * Compute the CIDs of a file using specific algorithms
- * @param filePath The path to the file
- * @param algorithms Array of algorithms ('sha256', 'sha1')
- * @returns Array of CIDs (in the order of the algorithms)
- */
-declare function computeCIDs({ filePath, algorithms }: {
-    filePath: string;
-    algorithms: CID_ALGORITHM_NAMES[];
-}): Promise<string[]>;
-
-export { CID_ALGORITHM_NAMES as C, type MultiHashData as M, type SimpleHash as S, type ComputeInterface as a, CID_ALGORITHM_CODES as b, CID_ALGORITHM as c, computeCIDs as d };
+export { CID_ALGORITHM_NAMES as C, type MultiHashData as M, type ComputeInterface as a, CID_ALGORITHM_CODES as b, CID_ALGORITHM as c };

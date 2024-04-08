@@ -2,7 +2,7 @@ import {createReadStream, promises as fs} from 'fs';
 import {parse} from 'csv-parse';
 import {parse as parseSync} from 'csv-parse/sync';
 import {stringify} from 'csv-stringify/sync';
-import {existsAsync} from "./ExistsAsync";
+import {existsAsync} from "../utils/ExistsAsync";
 import path from "path";
 import {clearInterval} from "node:timers";
 import {CID_ALGORITHM_NAMES} from "./MultiHashData";

@@ -21,13 +21,17 @@
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
     },
-    "./index.async": {
-      "import": "./dist/index.async.js",
-      "require": "./dist/index.async.cjs"
+    "./index-interface": {
+      "import": "./dist/index-interface.js",
+      "require": "./dist/index-interface.cjs"
+    },
+    "./index-browser": {
+      "import": "./dist/index-browser.js",
+      "require": "./dist/index-browser.cjs"
     }
   },
   "scripts": {
-    "build": "cross-env rimraf dist & tsup",
+    "build": "cross-env rimraf ./dist & tsup",
     "ci": "yarn run coverage",
     "test": "vitest"
   },

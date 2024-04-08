@@ -1,4 +1,4 @@
-import {CID_ALGORITHM_NAMES, ComputeHashIndexCache, HashComputer} from "../lib";
+import {CID_ALGORITHM_NAMES, HashComputerIndexCache, HashComputerWorker} from "../lib";
 
 import {describe, expect, it} from 'vitest';
 import * as process from "process";
@@ -13,7 +13,7 @@ process.env.WORKER_URL = "./dist/worker.js";
 
 describe('add', () => {
     it('meta data compute', async () => {
-        let hashComputer = new HashComputer([
+        let hashComputer = new HashComputerWorker([
             CID_ALGORITHM_NAMES.sha1,
             CID_ALGORITHM_NAMES.sha256,
             CID_ALGORITHM_NAMES.md5,
@@ -43,7 +43,7 @@ describe('add', () => {
     it('meta data compute with index', async () => {
         await rm("./tmp",{recursive:true});
         await mkdir("./tmp",{recursive:true});
-        let hashComputer = new ComputeHashIndexCache("./tmp/index.csv",[
+        let hashComputer = new HashComputerIndexCache("./tmp/index.csv",[
             CID_ALGORITHM_NAMES.sha1,
             CID_ALGORITHM_NAMES.sha256,
             CID_ALGORITHM_NAMES.md5,
@@ -73,7 +73,7 @@ describe('add', () => {
     });
     it('cache', async () => {
         await mkdir("./tmp",{recursive:true});
-        let hashComputer = new ComputeHashIndexCache("./tmp/index.csv",[
+        let hashComputer = new HashComputerIndexCache("./tmp/index.csv",[
             CID_ALGORITHM_NAMES.sha1,
             CID_ALGORITHM_NAMES.sha256,
             CID_ALGORITHM_NAMES.md5,
