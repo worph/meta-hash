@@ -1,10 +1,26 @@
 import './chunk-XCJZALP2.js';
-import { a as a$1 } from './chunk-A6J5HDTV.js';
-export { a as computeCIDs } from './chunk-A6J5HDTV.js';
-export { c as CID_ALGORITHM, a as CID_ALGORITHM_CODES, b as CID_ALGORITHM_NAMES } from './chunk-YCFZVUZC.js';
+import { computeCIDs } from './chunk-SV45D2HN.js';
+export { computeCIDs } from './chunk-SV45D2HN.js';
+export { CID_ALGORITHM, CID_ALGORITHM_CODES, CID_ALGORITHM_NAMES } from './chunk-HTZ763NS.js';
 
-var a=class{constructor(r){this.targetHash=r;}async computeMissingHash(r,e){let t=this.targetHash.filter(o=>!e[o]);if(t.length===0)return;let i=await a$1({stream:r,algorithms:t});for(let[o,c]of i.entries()){let n=t[o];e[n]=c;}}};
+// src/lib/hash-compute/HashComputer.ts
+var HashComputer = class {
+  constructor(targetHash) {
+    this.targetHash = targetHash;
+  }
+  async computeMissingHash(stream, metadata) {
+    const neededHashes = this.targetHash.filter((hashName) => !metadata[hashName]);
+    if (neededHashes.length === 0) {
+      return;
+    }
+    const cids = await computeCIDs({ stream, algorithms: neededHashes });
+    for (const [index, cid] of cids.entries()) {
+      const hashType = neededHashes[index];
+      metadata[hashType] = cid;
+    }
+  }
+};
 
-export { a as HashComputer };
+export { HashComputer };
 //# sourceMappingURL=out.js.map
 //# sourceMappingURL=index-browser.js.map

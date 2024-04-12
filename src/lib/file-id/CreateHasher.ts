@@ -1,6 +1,4 @@
 import {CID_ALGORITHM_CODES, CID_ALGORITHM_NAMES} from "../hash-compute/MultiHashData";
-import {Readable} from "stream";
-import {ReadableStream} from "stream/web";
 import {SimpleHash} from "./SimpleHash";
 import {createHash} from "crypto";
 import {Crc32Hash} from "./Crc32Hash";
@@ -19,7 +17,7 @@ export const codeTable = {
  * @returns Array of CIDs (in the order of the algorithms)
  * @param algo
  */
-export function createHasher(algo: CID_ALGORITHM_NAMES): SimpleHash {
+export async function createHasher(algo: CID_ALGORITHM_NAMES): Promise<SimpleHash> {
     switch (algo) {
         case CID_ALGORITHM_NAMES.sha256:
             return createHash("sha256");

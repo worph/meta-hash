@@ -15,13 +15,15 @@ export async function computeCIDs({stream, algorithms}: {
     stream: Readable | ReadableStream;
     algorithms: CID_ALGORITHM_NAMES[]
 }): Promise<string[]> {
-    const hashers = hasherDefiner(algorithms);
+    const hashers = await hasherDefiner(algorithms);
 
     // Check if the environment is Node.js or Browser and handle the stream accordingly
     if (stream instanceof Readable) {
         // Node.js environment
         for await (const chunk of stream) {
-            hashers.forEach(item => item.hasher.update(chunk as Buffer));
+            for (const item of hashers) {
+                await item.hasher.update(chunk as Buffer);
+            }
         }
     } else {
         // Browser environment
@@ -30,28 +32,30 @@ export async function computeCIDs({stream, algorithms}: {
             const {done, value} = await reader.read();
             if (done) break;
             // Assuming the hasher can handle Uint8Array directly
-            hashers.forEach(item => item.hasher.update(Buffer.from(value)));
+            for (const item of hashers) {
+                await item.hasher.update(Buffer.from(value));
+            }
         }
     }
 
     return cidFinalize(hashers);
 }
 
-function hasherDefiner(algorithms: CID_ALGORITHM_NAMES[]): {
+async function hasherDefiner(algorithms: CID_ALGORITHM_NAMES[]): Promise<{
     hasher: SimpleHash,
     code: CID_ALGORITHM_CODES
-}[] {
+}[]> {
     const hashers = algorithms.filter(algo => Object.values(CID_ALGORITHM_NAMES).includes(algo))
-        .map(algo => ({
-            hasher: createHasher(algo),
+        .map(async algo => ({
+            hasher: await createHasher(algo),
             code: codeTable[algo]
         }));
-    return hashers;
+    return await Promise.all(hashers);
 }
 
 async function cidFinalize(hashers: { hasher: SimpleHash, code: number }[]): Promise<string[]> {
     return await Promise.all(hashers.map(async ({code, hasher}) => {
-        const hashBuffer = hasher.digest();
+        const hashBuffer = await hasher.digest();
         const digest = create(code, hashBuffer);
         return CID.createV1(code, digest).toString();
     }));
