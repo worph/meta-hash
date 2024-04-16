@@ -1,21 +1,454 @@
 import './chunk-XCJZALP2.js';
-import './chunk-6UBSWOQL.js';
-import './chunk-A6J5HDTV.js';
-export { c as CID_ALGORITHM, a as CID_ALGORITHM_CODES, b as CID_ALGORITHM_NAMES } from './chunk-YCFZVUZC.js';
+import './chunk-LTWPBXM5.js';
+import './chunk-SV45D2HN.js';
+export { CID_ALGORITHM, CID_ALGORITHM_CODES, CID_ALGORITHM_NAMES } from './chunk-HTZ763NS.js';
 import { Piscina } from 'piscina';
 import { promises, createReadStream } from 'fs';
 import { parse as parse$1 } from 'csv-parse';
 import { parse } from 'csv-parse/sync';
 import { stringify } from 'csv-stringify/sync';
 import { stat, readdir, access, constants } from 'fs/promises';
-import * as c from 'path';
-import c__default from 'path';
+import * as path3 from 'path';
+import path3__default from 'path';
 import { clearInterval } from 'node:timers';
-import M from 'chokidar';
-import z from 'p-queue';
+import chokidar from 'chokidar';
+import PQueue from 'p-queue';
 
-var l=import.meta.dirname;l=l.replace("src","dist");l=l+"/worker.js";var w=new URL(l).href;console.log("Worker URL: ",w);var p=class{piscina;constructor(e){this.piscina=new Piscina({maxThreads:4,filename:e||process.env.WORKER_URL||w});}async computeCIDs(e,t){return this.piscina.run({filePath:e,algorithms:t})}};var m=class{constructor(e,t){this.targetHash=e;this.fileIDComputer=new p(t);}fileIDComputer;async computeMissingHash(e,t){let i=this.targetHash.filter(s=>!t[s]);if(i.length===0)return;let r=await this.fileIDComputer.computeCIDs(e,i);for(let[s,a]of r.entries()){let n=i[s];t[n]=a;}}};async function f(h){try{return await access(h,constants.F_OK),!0}catch{return !1}}var E=["path","size","mtime"],d=class{constructor(e,t=["cid_sha1","cid_sha2-256"]){this.targetHash=t;e=e.replace(".csv","");for(let i of this.targetHash)if(this.filePaths[i]=`${e}-${i}.csv`,!this.filePaths[i])throw new Error(`Invalid index file path for ${i}`)}cache=new Map;intervalId;intervalTime=3e4;lastIndexFileSize=0;lastCacheFile;indexOpsInProgress=!1;hasChanged=!1;initialLoad;filePaths={};getCache(){return new Map(this.cache)}async init(e=!0){return this.initialLoad||(this.initialLoad=new Promise(async(t,i)=>{try{for(let r of this.targetHash){if(!this.checkCSVHeaders(this.filePaths[r],r))throw new Error(`Invalid index file headers for ${r}`);await this.loadIndex(r);}e&&this.start(),t();}catch(r){i(r);}})),this.initialLoad}checkCSVHeaders(e,t){let i=parse(e,{bom:!0,columns:!0,skip_empty_lines:!0});if(i.length===0)return !0;let r=Object.keys(i[0]);return [...E,t].every(a=>r.includes(a))}start(){this.startAutoSave(this.intervalTime);}stopAutoSave(){this.intervalId&&clearInterval(this.intervalId);}startAutoSave(e){this.stopAutoSave(),this.intervalTime=e,this.intervalId=setInterval(()=>this.saveCacheToFile(),e);}async loadIndex(e){if(await f(this.filePaths[e])){let t=await promises.stat(this.filePaths[e]);if(this.lastIndexFileSize!==t.size){let i=await this.readCsv(e);for(let r of i){let s=this.cache.get(r.path);s?s[e]=r[e]:this.cache.set(r.path,r);}return this.lastIndexFileSize=t.size,this.lastCacheFile=i,i}else return this.lastCacheFile}return []}loadIndexFromCache(){return Array.from(this.cache.values())}async readCsv(e){if(!await f(this.filePaths[e]))return [];let t=performance.now(),i=parse$1({columns:!0,skip_empty_lines:!0}),r=[];return new Promise((s,a)=>{createReadStream(this.filePaths[e]).pipe(i).on("data",n=>{r.push(n);}).on("end",()=>{s(r),console.log(`Index read ${e} time ${performance.now()-t}ms`);}).on("error",n=>{a(n);});})}async saveCacheToFile(){if(this.indexOpsInProgress||!this.hasChanged)return;this.hasChanged=!1,this.indexOpsInProgress=!0;let e=performance.now(),t;this.cache.size!==0&&(t=this.loadIndexFromCache());for(let r of this.targetHash){let s=await this.loadIndex(r),a=new Map(s.map(n=>[n.path,n]));if(this.cache.size!==0){let n=t.filter(o=>!a.has(o.path)&&!!o[r]);if(n.length!==0){let o=stringify(n,{header:s.length===0,columns:[{key:"path",header:"path"},{key:"size",header:"size"},{key:"mtime",header:"mtime"},{key:r,header:r}]});await promises.appendFile(this.filePaths[r],o);}}}let i=performance.now()-e;console.log(`Index saved in ${i}ms`),i*10>this.intervalTime&&(this.startAutoSave(i*10),console.log(`Index save interval increased to ${i*10}ms`)),this.indexOpsInProgress=!1;}async getCidForFileAsync(e){let t=c__default.basename(e),i=await stat(e);return this.getCidForFile(t,i.size,i.mtime.toISOString())}getCidForFile(e,t,i){let r=c__default.basename(e),s=this.cache.get(r);for(let a of this.targetHash)s[a]||delete s[a];if(s){if(s.mtime){if(s.size===t+""&&s.mtime===i)return s}else if(s.size===t+"")return s}return null}addFileCid(e,t,i,r){if(!e||!t||!i||!r)throw new Error("Invalid parameters");for(let o of this.targetHash)if(!r[o])throw new Error(`Missing hash ${o}`);let s=t+"",a=c__default.basename(e),n=this.cache.get(a);if(n)for(let o of this.targetHash)n[o]=r[o];else {let o={};for(let I of this.targetHash)o[I]=r[I];let g={path:a,size:s,mtime:i,...o};this.cache.set(a,g);}this.hasChanged=!0;}};var y=class{constructor(e,t=["cid_sha1","cid_sha2-256"],i){this.targetHash=t;this.hashComputer=new m(t,i),this.hashIndexManager=new d(e,t);}hashIndexManager;hashComputer;async computeMissingHash(e,t){await this.hashIndexManager.init();let i=await stat(e);if(this.hashIndexManager.getCache().has(c__default.basename(e))){let r=this.hashIndexManager.getCidForFile(e,i.size,i.mtime.toISOString());if(r)for(let s of this.targetHash)!t[s]&&r[s]&&(t[s]=r[s]);}await this.hashComputer.computeMissingHash(e,t),this.hashIndexManager.addFileCid(e,i.size,i.mtime.toISOString(),t);}async getHashIndexManager(){return await this.hashIndexManager.init(),this.hashIndexManager}};var F=class{constructor(e,t,i){this.WATCH_FOLDER_LIST=t;this.config=i;this.fileProcessor=e;}initialized=!1;queue=new z({concurrency:100,autoStart:!0});fileProcessor;queueSize=-1;current=0;processing=new Set;async processDirectory(e,t){let i=await readdir(e,{withFileTypes:!0});for(let r of i){let s=c.join(e,r.name);if(r.isDirectory())await this.processDirectory(s,t);else {let a=this.processFile(s);t.push(a);}}}async countFile(e){let t=await readdir(e,{withFileTypes:!0}),i=[];for(let s of t){let a=c.join(e,s.name);s.isDirectory()?i.push(this.countFile(a)):i.push(this.queue.add(async()=>await this.fileProcessor.canProcessFile(a)?1:0));}return (await Promise.all(i)).reduce((s,a)=>s+a,0)}async processFile(e){if(await this.fileProcessor.canProcessFile(e)&&!this.processing.has(e)){this.processing.add(e);let t=++this.current;await this.queue.add(()=>this.fileProcessor.processFile(t,this.queueSize,e)),this.processing.delete(e);}}async processFileExtended(e){let t=c.dirname(e);await this.processDirectory(t,[]);}chokidarWatch(e){let t={ignoreInitial:!0,persistent:!0,depth:1/0,awaitWriteFinish:{stabilityThreshold:this.config.stabilityThreshold||3e4,pollInterval:this.config.pollInterval||5e3}},i;(this.config.interval||0)<=0?i=M.watch(e,t):i=M.watch(e,{...t,usePolling:!0,interval:this.config.interval||0}),i.on("add",async r=>{try{await this.processFileExtended(r);}catch(s){console.error(`Error processing file ${r}:`,s);}}).on("change",async r=>{try{await this.processFileExtended(r);}catch(s){console.error(`Error processing file ${r}:`,s);}}).on("unlink",async r=>{try{await this.fileProcessor.deleteFile(r),await this.processFileExtended(r);}catch(s){console.error("Error processing file deletion:",s);}}).on("error",r=>console.error(`Watcher error: ${r}`)).on("ready",()=>{console.log(`Watching for file changes on ${e}`);});}async watch(){let e=this.WATCH_FOLDER_LIST;if(!e)throw new Error("No folder to watch");let t=e.split(",");this.chokidarWatch(t);let i=[];for(let a=0;a<t.length;a++)t[a]=c.normalize(t[a]),i.push(this.countFile(t[a]));let r=(await Promise.all(i)).reduce((a,n)=>a+n,0);console.log(`Found ${r} files to process`),this.queueSize=r;let s=[];for(let a=0;a<t.length;a++)t[a]=c.normalize(t[a]),await this.processDirectory(t[a],s);await Promise.all(s),this.initialized=!0,console.log("Watcher ready");}};
+var distFolder = import.meta.dirname;
+distFolder = distFolder.replace("src", "dist");
+distFolder = distFolder + "/worker.js";
+var workerUrl = new URL(distFolder).href;
+console.log("Worker URL: ", workerUrl);
+var FileIDComputerWorker = class {
+  piscina;
+  constructor(workerPath) {
+    this.piscina = new Piscina({
+      maxThreads: 4,
+      //filename: new URL('./ShaComputeWorker.ts', import.meta.url).href
+      filename: workerPath || process.env.WORKER_URL || workerUrl
+    });
+  }
+  /**
+   * Compute the CIDs of a file using specific algorithms
+   * @param filePath The path to the file
+   * @param algorithms Array of algorithms ('sha256', 'sha1')
+   * @returns Array of CIDs (in the order of the algorithms)
+   */
+  async computeCIDs(filePath, algorithms) {
+    return this.piscina.run({ filePath, algorithms });
+  }
+};
 
-export { p as FileIDComputerWorker, F as FolderWatcher, y as HashComputerIndexCache, m as HashComputerWorker, d as HashIndexManager, E as INDEX_HEADERS };
+// src/lib/hash-compute/HashComputerWorker.ts
+var HashComputerWorker = class {
+  constructor(targetHash, workerPath) {
+    this.targetHash = targetHash;
+    this.fileIDComputer = new FileIDComputerWorker(workerPath);
+  }
+  fileIDComputer;
+  async computeMissingHash(filePath, metadata) {
+    const neededHashes = this.targetHash.filter((hashName) => !metadata[hashName]);
+    if (neededHashes.length === 0) {
+      return;
+    }
+    const cids = await this.fileIDComputer.computeCIDs(filePath, neededHashes);
+    for (const [index, cid] of cids.entries()) {
+      const hashType = neededHashes[index];
+      metadata[hashType] = cid;
+    }
+  }
+};
+async function existsAsync(filePath) {
+  try {
+    await access(filePath, constants.F_OK);
+    return true;
+  } catch {
+    return false;
+  }
+}
+var INDEX_HEADERS = ["path", "size", "mtime"];
+var HashIndexManager = class {
+  constructor(filePath, targetHash = ["cid_sha1" /* sha1 */, "cid_sha2-256" /* sha256 */]) {
+    this.targetHash = targetHash;
+    filePath = filePath.replace(".csv", "");
+    for (const hash of this.targetHash) {
+      this.filePaths[hash] = `${filePath}-${hash}.csv`;
+      if (!this.filePaths[hash]) {
+        throw new Error(`Invalid index file path for ${hash}`);
+      }
+    }
+  }
+  cache = /* @__PURE__ */ new Map();
+  intervalId;
+  intervalTime = 3e4;
+  lastIndexFileSize = 0;
+  //size of the index file last time it was read
+  lastCacheFile;
+  //state of the file last time it was read
+  indexOpsInProgress = false;
+  hasChanged = false;
+  initialLoad;
+  filePaths = {};
+  getCache() {
+    return new Map(this.cache);
+  }
+  /**
+   * After init consseutively calls to this method will not reload the index
+   * @param autosave
+   */
+  async init(autosave = true) {
+    if (!this.initialLoad) {
+      this.initialLoad = new Promise(async (resolve, reject) => {
+        try {
+          for (const hash of this.targetHash) {
+            if (!this.checkCSVHeaders(this.filePaths[hash], hash)) {
+              throw new Error(`Invalid index file headers for ${hash}`);
+            }
+            await this.loadIndex(hash);
+          }
+          if (autosave) {
+            this.start();
+          }
+          resolve();
+        } catch (e) {
+          reject(e);
+        }
+      });
+    }
+    return this.initialLoad;
+  }
+  // Function to check CSV headers
+  checkCSVHeaders(csvContent, hash) {
+    const records = parse(csvContent, {
+      bom: true,
+      columns: true,
+      skip_empty_lines: true
+    });
+    if (records.length === 0) {
+      return true;
+    }
+    const headers = Object.keys(records[0]);
+    const requiredHeaders = [...INDEX_HEADERS, hash];
+    return requiredHeaders.every((header) => headers.includes(header));
+  }
+  start() {
+    this.startAutoSave(this.intervalTime);
+  }
+  stopAutoSave() {
+    if (this.intervalId) {
+      clearInterval(this.intervalId);
+    }
+  }
+  startAutoSave(time) {
+    this.stopAutoSave();
+    this.intervalTime = time;
+    this.intervalId = setInterval(() => this.saveCacheToFile(), time);
+  }
+  async loadIndex(hash) {
+    if (await existsAsync(this.filePaths[hash])) {
+      const stats = await promises.stat(this.filePaths[hash]);
+      if (this.lastIndexFileSize !== stats.size) {
+        const records = await this.readCsv(hash);
+        for (const record of records) {
+          let indexLine = this.cache.get(record.path);
+          if (!indexLine) {
+            this.cache.set(record.path, record);
+          } else {
+            indexLine[hash] = record[hash];
+          }
+        }
+        this.lastIndexFileSize = stats.size;
+        this.lastCacheFile = records;
+        return records;
+      } else {
+        return this.lastCacheFile;
+      }
+    }
+    return [];
+  }
+  loadIndexFromCache() {
+    return Array.from(this.cache.values());
+  }
+  async readCsv(hash) {
+    if (!await existsAsync(this.filePaths[hash])) {
+      return [];
+    }
+    const start = performance.now();
+    const parser = parse$1({
+      columns: true,
+      skip_empty_lines: true
+    });
+    const records = [];
+    return new Promise((resolve, reject) => {
+      createReadStream(this.filePaths[hash]).pipe(parser).on("data", (record) => {
+        records.push(record);
+      }).on("end", () => {
+        resolve(records);
+        console.log(`Index read ${hash} time ${performance.now() - start}ms`);
+      }).on("error", (err) => {
+        reject(err);
+      });
+    });
+  }
+  async saveCacheToFile() {
+    if (this.indexOpsInProgress || !this.hasChanged) {
+      return;
+    }
+    this.hasChanged = false;
+    this.indexOpsInProgress = true;
+    const start = performance.now();
+    let cacheRows;
+    if (this.cache.size !== 0) {
+      cacheRows = this.loadIndexFromCache();
+    }
+    for (const hash of this.targetHash) {
+      let existingRows = await this.loadIndex(hash);
+      let existingRowsAsMap = new Map(existingRows.map((row) => [row.path, row]));
+      if (this.cache.size !== 0) {
+        const newRows = cacheRows.filter((row) => {
+          const newRow = !existingRowsAsMap.has(row.path);
+          return newRow && !!row[hash];
+        });
+        if (newRows.length !== 0) {
+          const csvString = stringify(newRows, {
+            header: existingRows.length === 0,
+            // Only add header if the file was empty
+            columns: [
+              { key: "path", header: "path" },
+              { key: "size", header: "size" },
+              { key: "mtime", header: "mtime" },
+              { key: hash, header: hash }
+            ]
+          });
+          await promises.appendFile(this.filePaths[hash], csvString);
+        }
+      }
+    }
+    const totalTime = performance.now() - start;
+    console.log(`Index saved in ${totalTime}ms`);
+    if (totalTime * 10 > this.intervalTime) {
+      this.startAutoSave(totalTime * 10);
+      console.log(`Index save interval increased to ${totalTime * 10}ms`);
+    }
+    this.indexOpsInProgress = false;
+  }
+  async getCidForFileAsync(filePath) {
+    const fileName = path3__default.basename(filePath);
+    const stats = await stat(filePath);
+    return this.getCidForFile(fileName, stats.size, stats.mtime.toISOString());
+  }
+  getCidForFile(filePath, fileSize, mtime) {
+    const fileName = path3__default.basename(filePath);
+    let fileNameIndex = this.cache.get(fileName);
+    for (const hash of this.targetHash) {
+      if (!fileNameIndex[hash]) {
+        delete fileNameIndex[hash];
+      }
+    }
+    if (fileNameIndex) {
+      if (fileNameIndex.mtime) {
+        if (fileNameIndex.size === fileSize + "" && fileNameIndex.mtime === mtime) {
+          return fileNameIndex;
+        }
+      } else {
+        if (fileNameIndex.size === fileSize + "") {
+          return fileNameIndex;
+        }
+      }
+    }
+    return null;
+  }
+  addFileCid(filePath, fileSize, mtime, hashs) {
+    if (!filePath || !fileSize || !mtime || !hashs) {
+      throw new Error("Invalid parameters");
+    }
+    for (const hash of this.targetHash) {
+      if (!hashs[hash]) {
+        throw new Error(`Missing hash ${hash}`);
+      }
+    }
+    const size = fileSize + "";
+    const baseName = path3__default.basename(filePath);
+    let indexLine = this.cache.get(baseName);
+    if (!indexLine) {
+      let filteredHash = {};
+      for (const hash of this.targetHash) {
+        filteredHash[hash] = hashs[hash];
+      }
+      const data = { path: baseName, size, mtime, ...filteredHash };
+      this.cache.set(baseName, data);
+    } else {
+      for (const hash of this.targetHash) {
+        indexLine[hash] = hashs[hash];
+      }
+    }
+    this.hasChanged = true;
+  }
+};
+var HashComputerIndexCache = class {
+  constructor(indexFilePath, targetHash = ["cid_sha1" /* sha1 */, "cid_sha2-256" /* sha256 */], workerPath) {
+    this.targetHash = targetHash;
+    this.hashComputer = new HashComputerWorker(targetHash, workerPath);
+    this.hashIndexManager = new HashIndexManager(indexFilePath, targetHash);
+  }
+  hashIndexManager;
+  hashComputer;
+  async computeMissingHash(filePath, metadata) {
+    await this.hashIndexManager.init();
+    let stats = await stat(filePath);
+    if (this.hashIndexManager.getCache().has(path3__default.basename(filePath))) {
+      const indexLine = this.hashIndexManager.getCidForFile(filePath, stats.size, stats.mtime.toISOString());
+      if (indexLine) {
+        for (const hash of this.targetHash) {
+          if (!metadata[hash] && indexLine[hash]) {
+            metadata[hash] = indexLine[hash];
+          }
+        }
+      }
+    }
+    await this.hashComputer.computeMissingHash(filePath, metadata);
+    this.hashIndexManager.addFileCid(filePath, stats.size, stats.mtime.toISOString(), metadata);
+  }
+  async getHashIndexManager() {
+    await this.hashIndexManager.init();
+    return this.hashIndexManager;
+  }
+};
+var FolderWatcher = class {
+  constructor(fileProcessor, WATCH_FOLDER_LIST, config) {
+    this.WATCH_FOLDER_LIST = WATCH_FOLDER_LIST;
+    this.config = config;
+    this.fileProcessor = fileProcessor;
+  }
+  initialized = false;
+  queue = new PQueue({ concurrency: 100, autoStart: true });
+  fileProcessor;
+  queueSize = -1;
+  current = 0;
+  processing = /* @__PURE__ */ new Set();
+  /**
+   * Process the directory and its subdirectories
+   * @param directory
+   * @param promises
+   * @private
+   */
+  async processDirectory(directory, promises) {
+    const entries = await readdir(directory, { withFileTypes: true });
+    for (const entry of entries) {
+      const fullPath = path3.join(directory, entry.name);
+      if (entry.isDirectory()) {
+        await this.processDirectory(fullPath, promises);
+      } else {
+        const promise = this.processFile(fullPath);
+        promises.push(promise);
+      }
+    }
+  }
+  async countFile(directory) {
+    const entries = await readdir(directory, { withFileTypes: true });
+    const countPromises = [];
+    for (const entry of entries) {
+      const fullPath = path3.join(directory, entry.name);
+      if (entry.isDirectory()) {
+        countPromises.push(this.countFile(fullPath));
+      } else {
+        countPromises.push(this.queue.add(
+          async () => await this.fileProcessor.canProcessFile(fullPath) ? 1 : 0
+        ));
+      }
+    }
+    const counts = await Promise.all(countPromises);
+    return counts.reduce((acc, current) => acc + current, 0);
+  }
+  async processFile(filePath) {
+    if (await this.fileProcessor.canProcessFile(filePath)) {
+      if (!this.processing.has(filePath)) {
+        this.processing.add(filePath);
+        const current = ++this.current;
+        await this.queue.add(() => this.fileProcessor.processFile(current, this.queueSize, filePath));
+        this.processing.delete(filePath);
+      }
+    }
+  }
+  /**
+   * Process the file and its sibling file included other folder it is a recursive function
+   * @param filePath
+   * @private
+   */
+  async processFileExtended(filePath) {
+    let dirname2 = path3.dirname(filePath);
+    await this.processDirectory(dirname2, []);
+  }
+  chokidarWatch(folderList) {
+    const chokidarconfig = {
+      ignoreInitial: true,
+      //ignore the initial scan we have our own function
+      persistent: true,
+      depth: Infinity,
+      awaitWriteFinish: {
+        stabilityThreshold: this.config.stabilityThreshold || 3e4,
+        pollInterval: this.config.pollInterval || 5e3
+      }
+    };
+    let watcher;
+    if ((this.config.interval || 0) <= 0) {
+      watcher = chokidar.watch(folderList, chokidarconfig);
+    } else {
+      watcher = chokidar.watch(folderList, {
+        ...chokidarconfig,
+        usePolling: true,
+        interval: this.config.interval || 0
+      });
+    }
+    watcher.on("add", async (filePath) => {
+      try {
+        await this.processFileExtended(filePath);
+      } catch (error) {
+        console.error(`Error processing file ${filePath}:`, error);
+      }
+    }).on("change", async (filePath) => {
+      try {
+        await this.processFileExtended(filePath);
+      } catch (e) {
+        console.error(`Error processing file ${filePath}:`, e);
+      }
+    }).on("unlink", async (filePath) => {
+      try {
+        await this.fileProcessor.deleteFile(filePath);
+        await this.processFileExtended(filePath);
+      } catch (e) {
+        console.error(`Error processing file deletion:`, e);
+      }
+    }).on("error", (error) => console.error(`Watcher error: ${error}`)).on("ready", () => {
+      console.log(`Watching for file changes on ${folderList}`);
+    });
+  }
+  async watch() {
+    let folders = this.WATCH_FOLDER_LIST;
+    if (!folders) {
+      throw new Error(`No folder to watch`);
+    }
+    let folderList = folders.split(",");
+    this.chokidarWatch(folderList);
+    let countPromises = [];
+    for (let i = 0; i < folderList.length; i++) {
+      folderList[i] = path3.normalize(folderList[i]);
+      countPromises.push(this.countFile(folderList[i]));
+    }
+    const count = (await Promise.all(countPromises)).reduce((acc, current) => acc + current, 0);
+    console.log(`Found ${count} files to process`);
+    this.queueSize = count;
+    let promises = [];
+    for (let i = 0; i < folderList.length; i++) {
+      folderList[i] = path3.normalize(folderList[i]);
+      await this.processDirectory(folderList[i], promises);
+    }
+    await Promise.all(promises);
+    this.initialized = true;
+    console.log(`Watcher ready`);
+  }
+};
+
+export { FileIDComputerWorker, FolderWatcher, HashComputerIndexCache, HashComputerWorker, HashIndexManager, INDEX_HEADERS };
 //# sourceMappingURL=out.js.map
 //# sourceMappingURL=index.js.map

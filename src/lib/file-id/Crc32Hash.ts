@@ -4,7 +4,7 @@ import {SimpleHash} from "@root/file-id/SimpleHash";
 export class Crc32Hash implements SimpleHash {
     private _crc: number = undefined;
 
-    update(data: Buffer): Crc32Hash {
+    update(data: Buffer): SimpleHash {
         // Update the CRC-32 checksum with the new chunk of data
         this._crc = crc32.buf(data, this._crc);
         return this;
