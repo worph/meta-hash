@@ -25,5 +25,5 @@ yarn-error.log*
 /junit.xml
 /.nyc_output/
 /coverage/
-#/dist/
+/dist/
 .idea
