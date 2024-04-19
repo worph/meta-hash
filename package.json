@@ -31,8 +31,7 @@
     }
   },
   "scripts": {
-    "build": "cross-env rimraf ./dist & tsup",
-    "ci": "yarn run coverage",
+    "build": "tsup",
     "test": "vitest"
   },
   "devDependencies": {
@@ -49,6 +48,7 @@
     "crc-32": "^1.2.2",
     "csv-parse": "^5.5.5",
     "csv-stringify": "^6.4.6",
+    "debounce": "^2.0.0",
     "multiformats": "^13.1.0",
     "p-queue": "^8.0.1",
     "piscina": "^4.4.0"

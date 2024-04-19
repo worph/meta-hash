@@ -6,6 +6,8 @@ export * from './file-id/ShaComputeWorker.js';//worker
 export * from './hash-compute/HashComputerIndexCache.js';
 export * from './hash-compute/HashComputerWorker.js';
 export * from './hash-compute/HashIndexManager.js';
+export * from './hash-compute/HashComputer.js';
+export * from './hash-compute/HashComputerFile.js';
 
 //folder-watcher
 export * from './folder-watcher/FolderWatcher.js';

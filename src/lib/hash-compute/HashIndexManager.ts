@@ -42,7 +42,8 @@ export class HashIndexManager {
     }
 
     /**
-     * After init consseutively calls to this method will not reload the index
+     * After init consecutively calls to this method will not reload the index
+     * readThe index for the first time and enable autosave
      * @param autosave
      */
     public async init(autosave = true) {
@@ -56,7 +57,7 @@ export class HashIndexManager {
                         await this.loadIndex(hash);
                     }
                     if (autosave) {
-                        this.start();
+                        this.startAutoSave()
                     }
                     resolve();
                 } catch (e) {
@@ -91,17 +92,13 @@ export class HashIndexManager {
         return requiredHeaders.every(header => headers.includes(header));
     };
 
-    public start() {
-        this.startAutoSave(this.intervalTime);
-    }
-
     public stopAutoSave() {
         if (this.intervalId) {
             clearInterval(this.intervalId);
         }
     }
 
-    private startAutoSave(time: number) {
+    public startAutoSave(time: number = this.intervalTime) {
         this.stopAutoSave();
         this.intervalTime = time;
         this.intervalId = setInterval(() => this.saveCacheToFile(), time);
@@ -216,6 +213,10 @@ export class HashIndexManager {
         this.indexOpsInProgress = false;
     }
 
+    /**
+     * this.getCidForFile(fileName, stats.size, stats.mtime.toISOString())
+     * @param filePath
+     */
     public async getCidForFileAsync(filePath: string): Promise<IndexLine> {
         const fileName = path.basename(filePath);
         const stats = await stat(filePath);

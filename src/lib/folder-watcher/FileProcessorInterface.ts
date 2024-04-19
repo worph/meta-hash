@@ -3,5 +3,7 @@ export interface FileProcessorInterface {
 
     canProcessFile(filePath: string): Promise<boolean>;
 
-    deleteFile(filePath: string): Promise<void>
+    deleteFile?(filePath: string): Promise<void>;
+
+    finalize?(): Promise<void>;
 }
