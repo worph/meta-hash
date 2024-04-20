@@ -27,14 +27,8 @@ export class HashIndexManager {
     private initialLoad: Promise<void>;
     private filePaths: { [key in CID_ALGORITHM_NAMES]?: string } = {};
 
-    constructor(filePath: string, private targetHash: CID_ALGORITHM_NAMES[] = [CID_ALGORITHM_NAMES.sha1, CID_ALGORITHM_NAMES.sha256]) {
-        filePath = filePath.replace(".csv", "");
-        for (const hash of this.targetHash) {
-            this.filePaths[hash] = `${filePath}-${hash}.csv`;
-            if (!this.filePaths[hash]) {
-                throw new Error(`Invalid index file path for ${hash}`);
-            }
-        }
+    constructor(private indexFolderPath: string,
+                private targetHash: CID_ALGORITHM_NAMES[]) {
     }
 
     public getCache(): Map<string, IndexLine> {
@@ -49,6 +43,17 @@ export class HashIndexManager {
     public async init(autosave = true) {
         if (!this.initialLoad) {
             this.initialLoad = new Promise<void>(async (resolve, reject) => {
+                const stat = await fs.stat(this.indexFolderPath);
+                if (!stat.isDirectory()) {
+                    throw new Error(`Invalid index folder path ${this.indexFolderPath}`);
+                }
+                for (const hash of this.targetHash) {
+                    this.filePaths[hash] = path.join(this.indexFolderPath,`index-${hash}.csv`);
+                    console.log(`Index file path for ${hash} is ${this.filePaths[hash]}`);
+                    if (!this.filePaths[hash]) {
+                        throw new Error(`Invalid index file path for ${hash}`);
+                    }
+                }
                 try {
                     for (const hash of this.targetHash) {
                         if (!this.checkCSVHeaders(this.filePaths[hash], hash)) {
@@ -226,12 +231,12 @@ export class HashIndexManager {
     public getCidForFile(filePath: string, fileSize: number, mtime: string): IndexLine {
         const fileName = path.basename(filePath);
         let fileNameIndex = this.cache.get(fileName);
-        for (const hash of this.targetHash) {
-            if (!fileNameIndex[hash]) {
-                delete fileNameIndex[hash];
-            }
-        }
         if (fileNameIndex) {
+            for (const hash of this.targetHash) {
+                if (!fileNameIndex[hash]) {
+                    delete fileNameIndex[hash];
+                }
+            }
             if (fileNameIndex.mtime) {
                 //if we have a mtime, we need to check it
                 if (fileNameIndex.size === (fileSize + "") && fileNameIndex.mtime === mtime) {

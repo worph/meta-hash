@@ -12,7 +12,7 @@ export class FolderWatcher {
     queueSize = -1;
     current = 0;
     processing = new Set<string>();
-    private readonly updateDebounced: () => Promise<void>;
+    private readonly finalizeDebounced: () => Promise<void>;
 
     constructor(fileProcessor:FileProcessorInterface,private WATCH_FOLDER_LIST: string, private config:{
         interval?: number,
@@ -23,7 +23,7 @@ export class FolderWatcher {
         this.fileProcessor = fileProcessor;
         if(this.fileProcessor.finalize) {
             const debounced = debounce(() => this.fileProcessor.finalize(), this.config.outputFolderUpdateIntervalMs || 10000, {immediate: true});
-            this.updateDebounced = async () => {
+            this.finalizeDebounced = async () => {
                 if (this.initialized) {
                     return debounced();
                 }
@@ -120,7 +120,9 @@ export class FolderWatcher {
             .on('add', async (filePath) => {
                 try {
                     await this.processFileExtended(filePath);
-                    await this.updateDebounced();
+                    if(this.finalizeDebounced) {
+                        await this.finalizeDebounced();
+                    }
                 } catch (error) {
                     console.error(`Error processing file ${filePath}:`, error);
                 }
@@ -128,7 +130,9 @@ export class FolderWatcher {
             .on('change', async (filePath) => {
                 try {
                     await this.processFileExtended(filePath);
-                    await this.updateDebounced();
+                    if(this.finalizeDebounced) {
+                        await this.finalizeDebounced();
+                    }
                 } catch (e) {
                     console.error(`Error processing file ${filePath}:`, e);
                 }
@@ -139,7 +143,9 @@ export class FolderWatcher {
                         await this.fileProcessor.deleteFile(filePath);
                     }
                     await this.processFileExtended(filePath);
-                    await this.updateDebounced();
+                    if(this.finalizeDebounced) {
+                        await this.finalizeDebounced();
+                    }
                 } catch (e) {
                     console.error(`Error processing file deletion:`, e);
                 }
@@ -175,7 +181,9 @@ export class FolderWatcher {
         }
         await Promise.all(promises);
         this.initialized = true;
-        await this.updateDebounced();
+        if(this.finalizeDebounced) {
+            await this.finalizeDebounced();
+        }
 
         console.log(`Watcher ready`);
     }

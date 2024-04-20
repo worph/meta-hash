@@ -12,3 +12,5 @@ export * from './hash-compute/HashComputerFile.js';
 //folder-watcher
 export * from './folder-watcher/FolderWatcher.js';
 export * from './index-interface.js';
+
+export * from './utils/ExistsAsync.js';

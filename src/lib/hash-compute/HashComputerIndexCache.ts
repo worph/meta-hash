@@ -8,9 +8,9 @@ export class HashComputerIndexCache implements ComputeInterface {
     private hashIndexManager: HashIndexManager;
     private hashComputer: HashComputerWorker;
 
-    constructor(indexFilePath: string,private targetHash: CID_ALGORITHM_NAMES[] = [CID_ALGORITHM_NAMES.sha1, CID_ALGORITHM_NAMES.sha256],workerPath?:string) {
+    constructor(indexFolderPath: string,private targetHash: CID_ALGORITHM_NAMES[] = [CID_ALGORITHM_NAMES.sha1, CID_ALGORITHM_NAMES.sha256],workerPath?:string) {
         this.hashComputer = new HashComputerWorker(targetHash,workerPath);
-        this.hashIndexManager = new HashIndexManager(indexFilePath,targetHash);
+        this.hashIndexManager = new HashIndexManager(indexFolderPath,targetHash);
     }
 
     public async computeMissingHash(filePath: string, metadata: MultiHashData): Promise<void> {

@@ -7,7 +7,6 @@ let distFolder = import.meta.dirname;
 distFolder = distFolder.replace('src', 'dist');
 distFolder = distFolder + "/worker.js";
 const workerUrl = new URL(distFolder).href;
-console.log("Worker URL: ", workerUrl);
 
 export class FileIDComputerWorker{
     private piscina: Piscina;
