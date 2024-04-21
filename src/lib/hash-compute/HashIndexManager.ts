@@ -18,10 +18,10 @@ export const INDEX_HEADERS = ['path', 'size', 'mtime'];
 
 export class HashIndexManager {
     private cache: Map<string, IndexLine> = new Map<string, IndexLine>();
-    private intervalId: NodeJS.Timeout;
+    private intervalId: any;
     private intervalTime: number = 30000;
-    private lastIndexFileSize: number = 0; //size of the index file last time it was read
-    private lastCacheFile: IndexLine[]; //state of the file last time it was read
+    private lastIndexFileSize: { [key in CID_ALGORITHM_NAMES]?: number } = {}; //size of the index file last time it was read
+    private lastCacheFile: { [key in CID_ALGORITHM_NAMES]?: IndexLine[] } = {}; //state of the file last time it was read
     private indexOpsInProgress: boolean = false;
     private hasChanged: boolean = false;
     private initialLoad: Promise<void>;
@@ -48,7 +48,7 @@ export class HashIndexManager {
                     throw new Error(`Invalid index folder path ${this.indexFolderPath}`);
                 }
                 for (const hash of this.targetHash) {
-                    this.filePaths[hash] = path.join(this.indexFolderPath,`index-${hash}.csv`);
+                    this.filePaths[hash] = path.join(this.indexFolderPath, `index-${hash}.csv`);
                     console.log(`Index file path for ${hash} is ${this.filePaths[hash]}`);
                     if (!this.filePaths[hash]) {
                         throw new Error(`Invalid index file path for ${hash}`);
@@ -113,23 +113,23 @@ export class HashIndexManager {
         if (await existsAsync(this.filePaths[hash])) {
             // check the file size and if it did not change, do not read the file
             const stats = await fs.stat(this.filePaths[hash]);
-            if (this.lastIndexFileSize !== stats.size) {
+            if (this.lastIndexFileSize[hash] !== stats.size) {
                 // Read existing file content and parse it
                 const records: IndexLine[] = await this.readCsv(hash);
                 for (const record of records) {
                     let indexLine = this.cache.get(record.path);
                     if (!indexLine) {
                         this.cache.set(record.path, record);
-                    } else {
+                    } else if(record[hash]){
                         //update the cache with the latest data
                         indexLine[hash] = record[hash];
                     }
                 }
-                this.lastIndexFileSize = stats.size;
-                this.lastCacheFile = records;
+                this.lastIndexFileSize[hash] = stats.size;
+                this.lastCacheFile[hash] = records;
                 return records;
             } else {
-                return this.lastCacheFile;
+                return this.lastCacheFile[hash];
             }
         }
         return [];
@@ -152,17 +152,19 @@ export class HashIndexManager {
 
         const records: IndexLine[] = [];
 
-        return new Promise((resolve, reject) => {
+        return new Promise<IndexLine[]>((resolve, reject) => {
             createReadStream(this.filePaths[hash])
                 .pipe(parser)
                 .on('data', (record) => {
                     records.push(record);
-                }).on('end', () => {
-                resolve(records);
-                console.log(`Index read ${hash} time ${performance.now() - start}ms`);
-            }).on('error', (err) => {
-                reject(err);
-            });
+                })
+                .on('end', () => {
+                    resolve(records);
+                    console.log(`Index read ${hash} time ${performance.now() - start}ms`);
+                })
+                .on('error', (err) => {
+                    reject(err);
+                });
         });
     }
 

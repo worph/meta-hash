@@ -73,3 +73,14 @@ Contributions to Meta-Hash are welcome! Please read our contributing guidelines 
 ## License
 
 Meta-Hash is released under the [MIT License](LICENSE.md).
+
+
+Example of usage:
+```typescript
+        const packageEntryPath = (path.dirname(import.meta.resolve("@metazla/meta-hash"))) + "/worker.js";
+        console.log("Sha Worker Path", packageEntryPath);
+        if (!config.INDEX_FOLDER_PATH) {
+            throw new Error("INDEX_FOLDER_PATH not set");
+        }
+        this.hashComputer = new HashComputerIndexCache(config.INDEX_FOLDER_PATH, targetHash, packageEntryPath);
+```

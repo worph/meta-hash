@@ -163,6 +163,10 @@ export class FolderWatcher {
         }
         let folderList = folders.split(',');
 
+        if(this.fileProcessor.initialize){
+            await this.fileProcessor.initialize();
+        }
+
         this.chokidarWatch(folderList);
 
         //start the initial scan
