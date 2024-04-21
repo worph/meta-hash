@@ -1,21 +1,21 @@
 import {Piscina} from "piscina";
 import {CID_ALGORITHM_NAMES} from "../hash-compute/MultiHashData";
-import {FileIDComputerInterface} from "@root/file-id/FileIDComputerInterface";
-
-// Construct the URL for the current module
-let distFolder = import.meta.dirname;
-distFolder = distFolder.replace('src', 'dist');
-distFolder = distFolder + "/worker.js";
-const workerUrl = new URL(distFolder).href;
 
 export class FileIDComputerWorker{
     private piscina: Piscina;
 
     constructor(workerPath?:string) {
+        if(!workerPath) {
+            // Construct the URL for the current module
+            let distFolder = import.meta.dirname;
+            distFolder = distFolder.replace('src', 'dist');
+            distFolder = distFolder + "/worker.js";
+            workerPath = new URL(distFolder,"file://").href;
+        }
         this.piscina = new Piscina({
             maxThreads: 4,
             //filename: new URL('./ShaComputeWorker.ts', import.meta.url).href
-            filename: workerPath || process.env.WORKER_URL || workerUrl
+            filename: workerPath
         });
     }
 
