@@ -180,7 +180,7 @@ export class HashIndexManager {
         if (this.cache.size !== 0) {
             cacheRows = this.loadIndexFromCache();
         }
-
+        let didWrite=false;
         for (const hash of this.targetHash) {
             let existingRows: IndexLine[] = await this.loadIndex(hash);
             let existingRowsAsMap: Map<string, IndexLine> = new Map(existingRows.map(row => [row.path, row]));
@@ -206,16 +206,19 @@ export class HashIndexManager {
 
                     // Append new cacheRows to the file
                     await fs.appendFile(this.filePaths[hash], csvString);
+                    didWrite = true;
                 }
             }
         }
 
-        const totalTime = performance.now() - start;
-        console.log(`Index saved in ${totalTime}ms`);
-        // Check if the time to save the index is greater than the interval time. increase the interval time if needed
-        if (totalTime * 10 > this.intervalTime) {
-            this.startAutoSave(totalTime * 10);
-            console.log(`Index save interval increased to ${totalTime * 10}ms`);
+        if(didWrite) {
+            const totalTime = performance.now() - start;
+            console.log(`Index saved in ${totalTime}ms`);
+            // Check if the time to save the index is greater than the interval time. increase the interval time if needed
+            if (totalTime * 10 > this.intervalTime) {
+                this.startAutoSave(totalTime * 10);
+                console.log(`Index save interval increased to ${totalTime * 10}ms`);
+            }
         }
         this.indexOpsInProgress = false;
     }
