@@ -16,7 +16,7 @@ export class HashComputerIndexCache implements ComputeInterface {
     public async computeMissingHash(filePath: string, metadata: MultiHashData): Promise<void> {
         await this.hashIndexManager.init();
         let stats = await stat(filePath);
-        if (this.hashIndexManager.getCache().has(path.basename(filePath))) {
+        if (this.hashIndexManager.hasFileInCache(path.basename(filePath),stats)) {
             const indexLine = this.hashIndexManager.getCidForFile(filePath, stats.size, stats.mtime.toISOString());
             if(indexLine) {
                 for (const hash of this.targetHash) {

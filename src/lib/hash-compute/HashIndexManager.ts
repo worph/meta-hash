@@ -7,6 +7,7 @@ import path from "path";
 import {clearInterval} from "node:timers";
 import {CID_ALGORITHM_NAMES} from "./MultiHashData";
 import {stat} from "fs/promises";
+import {Stats} from "node:fs";
 
 interface IndexLine extends Partial<Record<CID_ALGORITHM_NAMES, string>> {
     path: string;
@@ -17,7 +18,7 @@ interface IndexLine extends Partial<Record<CID_ALGORITHM_NAMES, string>> {
 export const INDEX_HEADERS = ['path', 'size', 'mtime'];
 
 export class HashIndexManager {
-    private cache: Map<string, IndexLine> = new Map<string, IndexLine>();
+    private cache: Map<string, IndexLine> = new Map<string, IndexLine>();//the key is the file `${file_name}-${filesize}-${mtime_ISOstr}`
     private intervalId: any;
     private intervalTime: number = 30000;
     private lastIndexFileSize: { [key in CID_ALGORITHM_NAMES]?: number } = {}; //size of the index file last time it was read
@@ -31,8 +32,12 @@ export class HashIndexManager {
                 private targetHash: CID_ALGORITHM_NAMES[]) {
     }
 
-    public getCache(): Map<string, IndexLine> {
-        return new Map(this.cache);
+    hasFileInCache(filePath: string,stats:Stats): boolean {
+        return this.cache.has(`${path.basename(filePath)}-${stats.size}-${stats.mtime.toISOString()}`);
+    }
+
+    getCacheSize(): number {
+        return this.cache.size;
     }
 
     /**
@@ -117,9 +122,10 @@ export class HashIndexManager {
                 // Read existing file content and parse it
                 const records: IndexLine[] = await this.readCsv(hash);
                 for (const record of records) {
-                    let indexLine = this.cache.get(record.path);
+                    const cacheKey = `${record.path}-${record.size}-${record.mtime}`;
+                    let indexLine = this.cache.get(cacheKey);
                     if (!indexLine) {
-                        this.cache.set(record.path, record);
+                        this.cache.set(cacheKey, record);
                     } else if(record[hash]){
                         //update the cache with the latest data
                         indexLine[hash] = record[hash];
@@ -183,12 +189,12 @@ export class HashIndexManager {
         let didWrite=false;
         for (const hash of this.targetHash) {
             let existingRows: IndexLine[] = await this.loadIndex(hash);
-            let existingRowsAsMap: Map<string, IndexLine> = new Map(existingRows.map(row => [row.path, row]));
+            let existingRowsAsMap: Map<string, IndexLine> = new Map(existingRows.map(row => [row.path + '-' + row.size + '-' + row.mtime, row]));
             if (this.cache.size !== 0) {
                 // Filter out cacheRows that are already in the file
                 const newRows = cacheRows.filter(row => {
                     //to be added a row must not exist in the file and must exist in the cache (with a hash)
-                    const newRow = !existingRowsAsMap.has(row.path);
+                    const newRow = !existingRowsAsMap.has(row.path + '-' + row.size + '-' + row.mtime);
                     return newRow && !!row[hash];
                 });
 
@@ -235,7 +241,7 @@ export class HashIndexManager {
 
     public getCidForFile(filePath: string, fileSize: number, mtime: string): IndexLine {
         const fileName = path.basename(filePath);
-        let fileNameIndex = this.cache.get(fileName);
+        let fileNameIndex = this.cache.get(`${fileName}-${fileSize}-${mtime}`);
         if (fileNameIndex) {
             for (const hash of this.targetHash) {
                 if (!fileNameIndex[hash]) {
@@ -275,7 +281,8 @@ export class HashIndexManager {
         }
         const size = fileSize + "";
         const baseName = path.basename(filePath);
-        let indexLine = this.cache.get(baseName);
+        const cacheKey = `${baseName}-${size}-${mtime}`;
+        let indexLine = this.cache.get(cacheKey);
         if (!indexLine) {
             //filter only the hashes we need
             let filteredHash = {};
@@ -283,7 +290,7 @@ export class HashIndexManager {
                 filteredHash[hash] = hashs[hash];
             }
             const data = {path: baseName, size: size, mtime: mtime, ...filteredHash};
-            this.cache.set(baseName, data);
+            this.cache.set(cacheKey, data);
         } else {
             //update the cache with the latest data
             for (const hash of this.targetHash) {

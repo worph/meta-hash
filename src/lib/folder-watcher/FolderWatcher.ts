@@ -9,23 +9,28 @@ export class FolderWatcher {
     initialized = false;
     queue = new PQueue({concurrency: 100, autoStart: true});
     fileProcessor: FileProcessorInterface;
-    queueSize = -1;
+    queueSize = 0;
     current = 0;
     processing = new Set<string>();
     private readonly finalizeDebounced: () => Promise<void>;
 
-    constructor(fileProcessor:FileProcessorInterface,private WATCH_FOLDER_LIST: string, private config:{
+    constructor(fileProcessor: FileProcessorInterface, private WATCH_FOLDER_LIST: string, private config: {
         interval?: number,
         stabilityThreshold?: number,
         pollInterval?: number,
         outputFolderUpdateIntervalMs?: number
     }) {
         this.fileProcessor = fileProcessor;
-        if(this.fileProcessor.finalize) {
-            const debounced = debounce(() => this.fileProcessor.finalize(), this.config.outputFolderUpdateIntervalMs || 10000, {immediate: true});
+        if (this.fileProcessor.finalize) {
+            const debouncedImmediate = debounce(() => this.fileProcessor.finalize(), this.config.outputFolderUpdateIntervalMs || 10000, {immediate: true});
+            const debouncedLate = debounce(() => this.fileProcessor.finalize(), this.config.outputFolderUpdateIntervalMs || 10000, {immediate: false});
             this.finalizeDebounced = async () => {
                 if (this.initialized) {
-                    return debounced();
+                    const ret1 = debouncedImmediate();
+                    const ret2 = debouncedLate();
+                    this.current = 0;
+                    this.queueSize = 0;
+                    await Promise.all([ret1, ret2]);
                 }
             }
         }
@@ -73,15 +78,15 @@ export class FolderWatcher {
         return counts.reduce((acc, current) => acc + current, 0);
     }
 
-    private async processFile(filePath: string):Promise<void> {
-        if(await this.fileProcessor.canProcessFile(filePath)) {
-            if(!this.processing.has(filePath)) {
-                this.processing.add(filePath);//avoid double processing in the queue
+    private async processFile(filePath: string): Promise<void> {
+        if (!this.processing.has(filePath)) {
+            this.processing.add(filePath);//avoid double processing in the queue
+            if (await this.fileProcessor.canProcessFile(filePath)) {
                 const current = ++this.current;
                 await this.queue.add(() => this.fileProcessor.processFile(current, this.queueSize, filePath));
-                this.processing.delete(filePath);
             }
         }
+        this.processing.delete(filePath);
     }
 
     /**
@@ -89,12 +94,29 @@ export class FolderWatcher {
      * @param filePath
      * @private
      */
-    private async processFileExtended(filePath: string):Promise<void> {
+    private async processFileExtended(filePath: string): Promise<void> {
         let dirname = path.dirname(filePath);
-        await this.processDirectory(dirname, []);
+        await this.processDirWithCount([dirname]);
     }
 
-    private chokidarWatch(folderList: string[]){
+    private async processDirWithCount(folderList: string[]): Promise<void> {
+        let countPromises = [];
+        for (let i = 0; i < folderList.length; i++) {
+            folderList[i] = path.normalize(folderList[i]);
+            countPromises.push(this.countFile(folderList[i]));
+        }
+        const count = (await Promise.all(countPromises)).reduce((acc, current) => acc + current, 0);
+        console.log(`Found ${count} files to process`);
+        this.queueSize += count;
+        let promises: Promise<any>[] = [];
+        for (let i = 0; i < folderList.length; i++) {
+            folderList[i] = path.normalize(folderList[i]);
+            await this.processDirectory(folderList[i], promises);
+        }
+        await Promise.all(promises);
+    }
+
+    private chokidarWatch(folderList: string[]) {
         const chokidarconfig = {
             ignoreInitial: true,//ignore the initial scan we have our own function
             persistent: true,
@@ -120,7 +142,7 @@ export class FolderWatcher {
             .on('add', async (filePath) => {
                 try {
                     await this.processFileExtended(filePath);
-                    if(this.finalizeDebounced) {
+                    if (this.finalizeDebounced) {
                         await this.finalizeDebounced();
                     }
                 } catch (error) {
@@ -130,7 +152,7 @@ export class FolderWatcher {
             .on('change', async (filePath) => {
                 try {
                     await this.processFileExtended(filePath);
-                    if(this.finalizeDebounced) {
+                    if (this.finalizeDebounced) {
                         await this.finalizeDebounced();
                     }
                 } catch (e) {
@@ -139,11 +161,12 @@ export class FolderWatcher {
             })
             .on('unlink', async (filePath) => {
                 try {
-                    if(this.fileProcessor.deleteFile) {
+                    if (this.fileProcessor.deleteFile) {
                         await this.fileProcessor.deleteFile(filePath);
                     }
+                    this.processing.delete(filePath);
                     await this.processFileExtended(filePath);
-                    if(this.finalizeDebounced) {
+                    if (this.finalizeDebounced) {
                         await this.finalizeDebounced();
                     }
                 } catch (e) {
@@ -163,29 +186,16 @@ export class FolderWatcher {
         }
         let folderList = folders.split(',');
 
-        if(this.fileProcessor.initialize){
+        if (this.fileProcessor.initialize) {
             await this.fileProcessor.initialize();
         }
 
         this.chokidarWatch(folderList);
 
         //start the initial scan
-        let countPromises = [];
-        for (let i = 0; i < folderList.length; i++) {
-            folderList[i] = path.normalize(folderList[i]);
-            countPromises.push(this.countFile(folderList[i]));
-        }
-        const count = (await Promise.all(countPromises)).reduce((acc, current) => acc + current, 0);
-        console.log(`Found ${count} files to process`);
-        this.queueSize = count;
-        let promises: Promise<any>[] = [];
-        for (let i = 0; i < folderList.length; i++) {
-            folderList[i] = path.normalize(folderList[i]);
-            await this.processDirectory(folderList[i], promises);
-        }
-        await Promise.all(promises);
+        await this.processDirWithCount(folderList);
         this.initialized = true;
-        if(this.finalizeDebounced) {
+        if (this.finalizeDebounced) {
             await this.finalizeDebounced();
         }
 
