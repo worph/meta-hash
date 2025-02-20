@@ -1,16 +1,7 @@
-import {CID_ALGORITHM_CODES, CID_ALGORITHM_NAMES} from "../hash-compute/MultiHashData";
+import {CID_ALGORITHM_NAMES} from "../hash-compute/MultiHashData";
 import {SimpleHash} from "./SimpleHash";
 import {createHash} from "crypto";
 import {Crc32Hash} from "./Crc32Hash";
-
-export const codeTable = {
-    [CID_ALGORITHM_NAMES.crc32]: CID_ALGORITHM_CODES.crc32,
-    [CID_ALGORITHM_NAMES.md5]: CID_ALGORITHM_CODES.md5,
-    [CID_ALGORITHM_NAMES.sha1]: CID_ALGORITHM_CODES.sha1,
-    [CID_ALGORITHM_NAMES.sha256]: CID_ALGORITHM_CODES.sha256,
-    [CID_ALGORITHM_NAMES.sha3_256]: CID_ALGORITHM_CODES.sha3_256,
-    [CID_ALGORITHM_NAMES.sha3_384]: CID_ALGORITHM_CODES.sha3_384
-}
 
 /**
  * Compute the CIDs of a file using specific algorithms

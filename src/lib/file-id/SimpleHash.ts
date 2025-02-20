@@ -1,5 +1,5 @@
 export interface SimpleHash {
-    update(data: Buffer): SimpleHash | Promise<SimpleHash>;
+    update(data: Uint8Array): SimpleHash | Promise<SimpleHash>;
 
-    digest(): Buffer | Promise<Buffer>;
+    digest(): Uint8Array | Promise<Uint8Array>;
 }

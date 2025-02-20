@@ -1,9 +1,8 @@
 import {CID_ALGORITHM_CODES, CID_ALGORITHM_NAMES} from "../hash-compute/MultiHashData";
-import {Readable} from "stream";
 import {create} from "multiformats/hashes/digest";
 import {CID} from 'multiformats/cid';
-import {createHasher, codeTable} from "./CreateHasher";
 import {SimpleHash} from "./SimpleHash";
+import {codeTable} from "@root/file-id/CodeTable";
 
 /**
  * Compute the CIDs of a file using specific algorithms
@@ -11,37 +10,26 @@ import {SimpleHash} from "./SimpleHash";
  * @param algorithms Array of algorithms ('sha256', 'sha1', etc.)
  * @returns Array of CIDs (in the order of the algorithms)
  */
-export async function computeCIDs({stream, algorithms}: {
-    stream: Readable | ReadableStream;
-    algorithms: CID_ALGORITHM_NAMES[]
+export async function computeCIDs({stream, algorithms,createHasher}: {
+    stream: ReadableStream<Uint8Array>;
+    algorithms: CID_ALGORITHM_NAMES[];
+    createHasher : (algo: CID_ALGORITHM_NAMES) => Promise<SimpleHash>
 }): Promise<string[]> {
-    const hashers = await hasherDefiner(algorithms);
-
-    // Check if the environment is Node.js or Browser and handle the stream accordingly
-    if (stream instanceof Readable) {
-        // Node.js environment
-        for await (const chunk of stream) {
-            for (const item of hashers) {
-                await item.hasher.update(chunk as Buffer);
-            }
-        }
-    } else {
-        // Browser environment
-        const reader = stream.getReader();
-        while (true) {
-            const {done, value} = await reader.read();
-            if (done) break;
-            // Assuming the hasher can handle Uint8Array directly
-            for (const item of hashers) {
-                await item.hasher.update(Buffer.from(value));
-            }
+    const hashers = await hasherDefiner(algorithms,createHasher);
+    const reader = stream.getReader();
+    while (true) {
+        const {done, value} = await reader.read();
+        if (done) break;
+        // Assuming the hasher can handle Uint8Array directly
+        for (const item of hashers) {
+            await item.hasher.update(value);
         }
     }
-
     return cidFinalize(hashers);
 }
 
-async function hasherDefiner(algorithms: CID_ALGORITHM_NAMES[]): Promise<{
+async function hasherDefiner(algorithms: CID_ALGORITHM_NAMES[],
+                             createHasher : (algo: CID_ALGORITHM_NAMES) => Promise<SimpleHash>): Promise<{
     hasher: SimpleHash,
     code: CID_ALGORITHM_CODES
 }[]> {

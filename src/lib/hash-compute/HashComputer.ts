@@ -1,14 +1,15 @@
 import {CID_ALGORITHM_NAMES, MultiHashData} from "./MultiHashData";
-import {Readable} from "stream";
 
 import {computeCIDs} from "@root/file-id/ComputeHash";
+import {SimpleHash} from "@root/file-id/SimpleHash";
 
 export class HashComputer{
 
-    constructor(private targetHash: CID_ALGORITHM_NAMES[]) {
+    constructor(private targetHash: CID_ALGORITHM_NAMES[],
+                private createHasher : (algo: CID_ALGORITHM_NAMES) => Promise<SimpleHash>) {
     }
 
-    async computeMissingHash(stream: Readable, metadata: MultiHashData): Promise<void> {
+    async computeMissingHash(stream: ReadableStream<Uint8Array>, metadata: MultiHashData): Promise<void> {
         // Dynamically determine which hashes are needed
         const neededHashes = this.targetHash.filter(hashName => !metadata[hashName]);
 
@@ -18,7 +19,7 @@ export class HashComputer{
         }
 
         // Compute only the needed CIDs
-        const cids = await computeCIDs({stream, algorithms:neededHashes});
+        const cids = await computeCIDs({stream, algorithms:neededHashes,createHasher:this.createHasher});
 
         // Map the computed CIDs back to their respective metadata properties
         for (const [index, cid] of cids.entries()) {

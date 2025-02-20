@@ -3,6 +3,7 @@ import {Readable} from "stream";
 
 import {computeCIDs} from "@root/file-id/ComputeHash";
 import fs from "fs";
+import {createHasher} from "@root/file-id/CreateHasher";
 
 export class HashComputerFile implements ComputeInterface{
 
@@ -19,8 +20,8 @@ export class HashComputerFile implements ComputeInterface{
         }
 
         // Compute only the needed CIDs
-        const stream = fs.createReadStream(filePath);
-        const cids = await computeCIDs({stream, algorithms:neededHashes});
+        const stream = Readable.toWeb(fs.createReadStream(filePath));
+        const cids = await computeCIDs({stream, algorithms:neededHashes,createHasher});
 
         // Map the computed CIDs back to their respective metadata properties
         for (const [index, cid] of cids.entries()) {
