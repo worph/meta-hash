@@ -4,9 +4,13 @@ Meta-Hash is a TypeScript library designed to monitor a specified folder and com
 
 ## Features
 
-- **Efficient Hash Computation**: Automatically computes hashes for new files using multiple algorithms, including SHA2-256, SHA1, MD5, SHA3-256 and more.
-- **Persistent Indexing**: Utilizes an index system to record file hashes, sizes, and modification times, preventing the need for rehashing on program restarts.
-- **CID Format**: Hashes are stored in the CID format, facilitating integration with IPFS and similar distributed file systems.
+- **Platform Agnostic**: Dual builds for Node.js and browser environments
+- **Efficient Hash Computation**: Computes hashes using multiple algorithms (SHA2-256, SHA1, MD5, SHA3-256, SHA3-384, CRC32)
+- **Persistent Indexing**: CSV-based index system tracks file hashes, sizes, and modification times
+- **CID Format**: Uses IPFS Content Identifiers (multiformat, multicodec, multihash)
+- **Worker Thread Support**: Node.js build can use worker threads for parallel hashing
+- **Incremental Hashing**: Only rehashes files when size or mtime changes
+- **Multiple Hash Types**: Supports all major cryptographic and checksum algorithms
 
 ## CID Format and Inspection
 
@@ -21,14 +25,20 @@ To inspect the details of a CID, including its version, codec, multihash and mor
 
 ## Installation
 
-To use Meta-Hash in your project, clone this repository and install the required dependencies.
+This package is part of the Meta Orbit monorepo and uses pnpm workspaces.
 
+From the monorepo root:
 ```bash
-#to install
-pnpm add @metazla/meta-hash@git@github.com:Metazla/meta-hash.git
+pnpm install
+```
 
-#to update
-pnpm update -i @metazla/meta-hash
+When using as a dependency in other packages:
+```json
+{
+  "dependencies": {
+    "@metazla/meta-hash": "workspace:*"
+  }
+}
 ```
 
 ## Usage of ComputeHashIndexCache
@@ -75,12 +85,91 @@ Contributions to Meta-Hash are welcome! Please read our contributing guidelines 
 Meta-Hash is released under the [MIT License](LICENSE.md).
 
 
-Example of usage:
+## Platform-Specific Builds
+
+### Node.js Environment
+
 ```typescript
-        const packageEntryPath = (path.dirname(import.meta.resolve("@metazla/meta-hash"))) + "/worker.js";
-        console.log("Sha Worker Path", packageEntryPath);
-        if (!config.INDEX_FOLDER_PATH) {
-            throw new Error("INDEX_FOLDER_PATH not set");
-        }
-        this.hashComputer = new HashComputerIndexCache(config.INDEX_FOLDER_PATH, targetHash, packageEntryPath);
+import { HashComputerIndexCache, CID_ALGORITHM_NAMES } from '@metazla/meta-hash';
+import path from 'path';
+
+// With worker threads for parallel processing
+const packageEntryPath = path.dirname(import.meta.resolve("@metazla/meta-hash")) + "/worker.js";
+const hashComputer = new HashComputerIndexCache(
+  '/path/to/index/folder',
+  [CID_ALGORITHM_NAMES.sha256, CID_ALGORITHM_NAMES.sha1],
+  packageEntryPath
+);
+
+// Hash a file
+const hashes = {};
+await hashComputer.computeMissingHash('/path/to/file.mkv', hashes);
+console.log(hashes[CID_ALGORITHM_NAMES.sha256]);
 ```
+
+### Browser Environment
+
+```typescript
+import { HashComputerIndexCache, CID_ALGORITHM_NAMES } from '@metazla/meta-hash/index-browser';
+
+// Browser build (no worker threads, uses Web Crypto API where available)
+const hashComputer = new HashComputerIndexCache(
+  '/virtual/index/path',
+  [CID_ALGORITHM_NAMES.sha256]
+);
+```
+
+## Architecture
+
+### Build Configuration
+
+Built with `tsup` for dual output:
+- **Node.js**: `dist/index.js` (ESM) and `dist/index.cjs` (CommonJS)
+- **Browser**: `dist/index-browser.js` (ESM) and `dist/index-browser.cjs` (CommonJS)
+
+### Worker Thread Support (Node.js)
+
+The Node.js build includes `worker.js` for parallel hash computation:
+```typescript
+// Automatic worker path resolution
+const workerPath = path.join(
+  path.dirname(import.meta.resolve('@metazla/meta-hash')),
+  'worker.js'
+);
+```
+
+## Development
+
+### Building
+
+```bash
+# From monorepo root
+pnpm run build
+
+# From package directory
+cd packages/meta-hash
+pnpm run build
+```
+
+### Testing
+
+```bash
+cd packages/meta-hash
+pnpm test
+```
+
+Uses Vitest for unit tests.
+
+## Integration
+
+Used by:
+- **meta-mesh**: File content hashing for deduplication
+- **meta-orbit**: Content addressing for distributed storage
+- **meta-ui**: Browser-based file verification
+
+## Performance
+
+- **Index Cache**: Avoids rehashing unchanged files (checks size + mtime)
+- **Worker Threads**: Parallel hashing on multi-core systems (Node.js only)
+- **Streaming**: Hashes large files without loading into memory
+- **CSV Index**: Fast lookup and incremental updates
