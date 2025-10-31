@@ -7,7 +7,7 @@ import {FileProcessorInterface} from "./FileProcessorInterface.js";
 
 export class FolderWatcher {
     initialized = false;
-    queue = new PQueue({concurrency: 100, autoStart: true});
+    queue: PQueue;
     fileProcessor: FileProcessorInterface;
     queueSize = 0;
     current = 0;
@@ -18,8 +18,11 @@ export class FolderWatcher {
         interval?: number,
         stabilityThreshold?: number,
         pollInterval?: number,
-        outputFolderUpdateIntervalMs?: number
+        outputFolderUpdateIntervalMs?: number,
+        concurrency?: number
     }) {
+        // Initialize queue with configurable concurrency (default 4 to match typical CPU count)
+        this.queue = new PQueue({concurrency: config.concurrency || 4, autoStart: true});
         this.fileProcessor = fileProcessor;
         if (this.fileProcessor.finalize) {
             const debouncedImmediate = debounce(() => this.fileProcessor.finalize(), this.config.outputFolderUpdateIntervalMs || 10000, {immediate: true});
@@ -82,6 +85,10 @@ export class FolderWatcher {
         if (!this.processing.has(filePath)) {
             this.processing.add(filePath);//avoid double processing in the queue
             if (await this.fileProcessor.canProcessFile(filePath)) {
+                // Notify that file is being queued (before adding to queue)
+                if (this.fileProcessor.queueFile) {
+                    this.fileProcessor.queueFile(filePath);
+                }
                 const current = ++this.current;
                 await this.queue.add(() => this.fileProcessor.processFile(current, this.queueSize, filePath));
             }
