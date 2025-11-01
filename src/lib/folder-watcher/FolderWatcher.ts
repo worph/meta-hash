@@ -97,15 +97,18 @@ export class FolderWatcher {
                 }
 
                 // Add to queue for concurrency control
-                // The FileProcessor implementation handles its own internal queue logic
+                // Queue only controls light processing throughput - hash processing runs independently
                 await this.queue.add(async () => {
                     // Light processing (quick metadata extraction)
                     if (this.fileProcessor.queueFile) {
                         await this.fileProcessor.queueFile(filePath);
                     }
 
-                    // Heavy processing (hash computation)
-                    await this.fileProcessor.processFile(current, this.queueSize, filePath);
+                    // Heavy processing (hash computation) - fire and forget
+                    // Don't await - let hashQueue handle its own concurrency independently
+                    if (this.fileProcessor.processFile) {
+                        this.fileProcessor.processFile(current, this.queueSize, filePath);
+                    }
                 });
             }
         }
