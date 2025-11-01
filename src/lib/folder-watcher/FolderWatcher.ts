@@ -85,12 +85,25 @@ export class FolderWatcher {
         if (!this.processing.has(filePath)) {
             this.processing.add(filePath);//avoid double processing in the queue
             if (await this.fileProcessor.canProcessFile(filePath)) {
-                // Notify that file is being queued (before adding to queue)
-                if (this.fileProcessor.queueFile) {
-                    this.fileProcessor.queueFile(filePath);
-                }
                 const current = ++this.current;
-                await this.queue.add(() => this.fileProcessor.processFile(current, this.queueSize, filePath));
+
+                // Notify implementation that file is pending (optional callback)
+                // Allows tracking of files before they enter the processing queue
+                if (this.fileProcessor.markPending) {
+                    this.fileProcessor.markPending(filePath);
+                }
+
+                // Add file to processing queue (respects concurrency limit)
+                // Both queueFile() and processFile() are executed within the queue
+                // to ensure controlled concurrency across the entire processing pipeline
+                await this.queue.add(async () => {
+                    // Optional: Quick/light pre-processing phase
+                    if (this.fileProcessor.queueFile) {
+                        await this.fileProcessor.queueFile(filePath);
+                    }
+                    // Main processing phase
+                    await this.fileProcessor.processFile(current, this.queueSize, filePath);
+                });
             }
         }
         this.processing.delete(filePath);
