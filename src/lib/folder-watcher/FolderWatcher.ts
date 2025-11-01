@@ -7,7 +7,7 @@ import {FileProcessorInterface} from "./FileProcessorInterface.js";
 
 export class FolderWatcher {
     initialized = false;
-    queue: PQueue;
+    queue: PQueue;  // Queue for basic concurrency control during file discovery
     fileProcessor: FileProcessorInterface;
     queueSize = 0;
     current = 0;
@@ -21,8 +21,11 @@ export class FolderWatcher {
         outputFolderUpdateIntervalMs?: number,
         concurrency?: number
     }) {
-        // Initialize queue with configurable concurrency (default 4 to match typical CPU count)
-        this.queue = new PQueue({concurrency: config.concurrency || 4, autoStart: true});
+        // Initialize queue for basic concurrency control
+        // Prevents overwhelming the system with too many concurrent file discoveries
+        const concurrency = config.concurrency || 4;
+        this.queue = new PQueue({concurrency, autoStart: true});
+        console.log(`FolderWatcher initialized with ${concurrency} workers for file processing`);
         this.fileProcessor = fileProcessor;
         if (this.fileProcessor.finalize) {
             const debouncedImmediate = debounce(() => this.fileProcessor.finalize(), this.config.outputFolderUpdateIntervalMs || 10000, {immediate: true});
@@ -69,10 +72,10 @@ export class FolderWatcher {
                 // Push the promise without waiting for it here
                 countPromises.push(this.countFile(fullPath));
             } else {
-                // Use an IIFE (Immediately Invoked Function Expression) to handle asynchronous condition
-                countPromises.push(this.queue.add(
-                    async () => (await this.fileProcessor.canProcessFile(fullPath)) ? 1 : 0
-                ));
+                // Check if file can be processed (no queue needed for counting)
+                countPromises.push(
+                    (async () => (await this.fileProcessor.canProcessFile(fullPath)) ? 1 : 0)()
+                );
             }
         }
 
@@ -87,21 +90,20 @@ export class FolderWatcher {
             if (await this.fileProcessor.canProcessFile(filePath)) {
                 const current = ++this.current;
 
-                // Notify implementation that file is pending (optional callback)
-                // Allows tracking of files before they enter the processing queue
-                if (this.fileProcessor.markPending) {
-                    this.fileProcessor.markPending(filePath);
-                }
-
-                // Add file to processing queue (respects concurrency limit)
-                // Both queueFile() and processFile() are executed within the queue
-                // to ensure controlled concurrency across the entire processing pipeline
+                // Add to queue for concurrency control
+                // The FileProcessor implementation handles its own internal queue logic
                 await this.queue.add(async () => {
-                    // Optional: Quick/light pre-processing phase
+                    // Mark as pending (optional callback)
+                    if (this.fileProcessor.markPending) {
+                        this.fileProcessor.markPending(filePath);
+                    }
+
+                    // Light processing (quick metadata extraction)
                     if (this.fileProcessor.queueFile) {
                         await this.fileProcessor.queueFile(filePath);
                     }
-                    // Main processing phase
+
+                    // Heavy processing (hash computation)
                     await this.fileProcessor.processFile(current, this.queueSize, filePath);
                 });
             }
