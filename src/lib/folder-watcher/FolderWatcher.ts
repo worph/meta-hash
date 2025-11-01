@@ -90,14 +90,15 @@ export class FolderWatcher {
             if (await this.fileProcessor.canProcessFile(filePath)) {
                 const current = ++this.current;
 
+                // Mark as pending BEFORE adding to queue
+                // This ensures files appear in "pending" state while waiting for queue
+                if (this.fileProcessor.markPending) {
+                    this.fileProcessor.markPending(filePath);
+                }
+
                 // Add to queue for concurrency control
                 // The FileProcessor implementation handles its own internal queue logic
                 await this.queue.add(async () => {
-                    // Mark as pending (optional callback)
-                    if (this.fileProcessor.markPending) {
-                        this.fileProcessor.markPending(filePath);
-                    }
-
                     // Light processing (quick metadata extraction)
                     if (this.fileProcessor.queueFile) {
                         await this.fileProcessor.queueFile(filePath);
