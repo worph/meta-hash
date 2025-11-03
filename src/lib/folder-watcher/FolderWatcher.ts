@@ -1,230 +1,170 @@
 import * as path from 'path';
 import chokidar from 'chokidar';
 import {readdir} from "fs/promises";
-import PQueue from "p-queue";
-import debounce from 'debounce';
-import {FileProcessorInterface} from "./FileProcessorInterface.js";
 
+/**
+ * Generic file discovery utility
+ * Discovers files in directory trees and emits paths as async generator
+ * No filtering logic - just pure file discovery
+ */
 export class FolderWatcher {
-    initialized = false;
-    queue: PQueue;  // Queue for basic concurrency control during file discovery
-    fileProcessor: FileProcessorInterface;
-    queueSize = 0;
-    current = 0;
-    processing = new Set<string>();
-    private readonly finalizeDebounced: () => Promise<void>;
-
-    constructor(fileProcessor: FileProcessorInterface, private WATCH_FOLDER_LIST: string, private config: {
-        interval?: number,
-        stabilityThreshold?: number,
-        pollInterval?: number,
-        outputFolderUpdateIntervalMs?: number,
-        concurrency?: number
-    }) {
-        // Initialize queue for basic concurrency control
-        // Prevents overwhelming the system with too many concurrent file discoveries
-        const concurrency = config.concurrency || 4;
-        this.queue = new PQueue({concurrency, autoStart: true});
-        console.log(`FolderWatcher initialized with ${concurrency} workers for file processing`);
-        this.fileProcessor = fileProcessor;
-        if (this.fileProcessor.finalize) {
-            const debouncedImmediate = debounce(() => this.fileProcessor.finalize(), this.config.outputFolderUpdateIntervalMs || 10000, {immediate: true});
-            const debouncedLate = debounce(() => this.fileProcessor.finalize(), this.config.outputFolderUpdateIntervalMs || 10000, {immediate: false});
-            this.finalizeDebounced = async () => {
-                if (this.initialized) {
-                    const ret1 = debouncedImmediate();
-                    const ret2 = debouncedLate();
-                    this.current = 0;
-                    this.queueSize = 0;
-                    await Promise.all([ret1, ret2]);
-                }
-            }
+    /**
+     * Discover all files in given directories
+     * Returns async generator that yields file paths as they're discovered
+     *
+     * @param directories - Array of directory paths to scan
+     * @returns AsyncGenerator yielding file paths
+     */
+    async *discoverFiles(directories: string[]): AsyncGenerator<string> {
+        for (const dir of directories) {
+            const normalizedDir = path.normalize(dir);
+            yield* this.walkDirectory(normalizedDir);
         }
-
     }
 
     /**
-     * Process the directory and its subdirectories
-     * @param directory
-     * @param promises
-     * @private
+     * Recursively walk directory tree
+     * Yields file paths as they're discovered
+     *
+     * @param directory - Directory to walk
+     * @returns AsyncGenerator yielding file paths
      */
-    private async processDirectory(directory: string, promises: Promise<any>[]) {
-        const entries = await readdir(directory, {withFileTypes: true});
-        for (const entry of entries) {
-            const fullPath = path.join(directory, entry.name);
-            if (entry.isDirectory()) {
-                await this.processDirectory(fullPath, promises);
-            } else {
-                const promise = this.processFile(fullPath);
-                promises.push(promise);
-            }
-        }
-    }
+    private async *walkDirectory(directory: string): AsyncGenerator<string> {
+        try {
+            const entries = await readdir(directory, {withFileTypes: true});
 
-    private async countFile(directory: string): Promise<number> {
-        const entries = await readdir(directory, {withFileTypes: true});
-        const countPromises: Promise<any>[] = [];
+            // Collect subdirectories for parallel processing
+            const subdirs: string[] = [];
 
-        for (const entry of entries) {
-            const fullPath = path.join(directory, entry.name);
-            if (entry.isDirectory()) {
-                // Push the promise without waiting for it here
-                countPromises.push(this.countFile(fullPath));
-            } else {
-                // Check if file can be processed (no queue needed for counting)
-                countPromises.push(
-                    (async () => (await this.fileProcessor.canProcessFile(fullPath)) ? 1 : 0)()
-                );
-            }
-        }
+            for (const entry of entries) {
+                const fullPath = path.join(directory, entry.name);
 
-        // Wait for all promises to resolve and then sum up their results
-        const counts = await Promise.all(countPromises);
-        return counts.reduce((acc, current) => acc + current, 0);
-    }
-
-    private async processFile(filePath: string): Promise<void> {
-        if (!this.processing.has(filePath)) {
-            this.processing.add(filePath);//avoid double processing in the queue
-            if (await this.fileProcessor.canProcessFile(filePath)) {
-                const current = ++this.current;
-
-                // Mark as pending BEFORE adding to queue
-                // This ensures files appear in "pending" state while waiting for queue
-                if (this.fileProcessor.markPending) {
-                    this.fileProcessor.markPending(filePath);
+                if (entry.isDirectory()) {
+                    subdirs.push(fullPath);
+                } else {
+                    // Yield file path immediately
+                    yield fullPath;
                 }
-
-                // Add to queue for concurrency control
-                // Queue only controls light processing throughput - hash processing runs independently
-                await this.queue.add(async () => {
-                    // Light processing (quick metadata extraction)
-                    if (this.fileProcessor.queueFile) {
-                        await this.fileProcessor.queueFile(filePath);
-                    }
-
-                    // Heavy processing (hash computation) - fire and forget
-                    // Don't await - let hashQueue handle its own concurrency independently
-                    if (this.fileProcessor.processFile) {
-                        this.fileProcessor.processFile(current, this.queueSize, filePath);
-                    }
-                });
             }
+
+            // Process subdirectories (yields naturally to event loop)
+            for (const subdir of subdirs) {
+                yield* this.walkDirectory(subdir);
+            }
+        } catch (error: any) {
+            // Handle permission errors gracefully
+            if (error.code === 'EACCES' || error.code === 'EPERM') {
+                console.warn(`[FolderWatcher] Permission denied: ${directory} - skipping`);
+            } else if (error.code === 'ENOENT') {
+                console.warn(`[FolderWatcher] Directory not found: ${directory} - skipping`);
+            } else if (error.code === 'ENOTDIR') {
+                console.warn(`[FolderWatcher] Not a directory: ${directory} - skipping`);
+            } else {
+                console.error(`[FolderWatcher] Error reading directory ${directory}:`, error.message);
+            }
+            // Continue processing - don't let one bad directory stop the scan
         }
-        this.processing.delete(filePath);
     }
 
     /**
-     * Process the file and its sibling file included other folder it is a recursive function
-     * @param filePath
-     * @private
+     * Watch directories for file changes using chokidar
+     *
+     * @param directories - Directories to watch
+     * @param callbacks - Event callbacks
+     * @param options - Chokidar options
      */
-    private async processFileExtended(filePath: string): Promise<void> {
-        let dirname = path.dirname(filePath);
-        await this.processDirWithCount([dirname]);
-    }
-
-    private async processDirWithCount(folderList: string[]): Promise<void> {
-        let countPromises = [];
-        for (let i = 0; i < folderList.length; i++) {
-            folderList[i] = path.normalize(folderList[i]);
-            countPromises.push(this.countFile(folderList[i]));
-        }
-        const count = (await Promise.all(countPromises)).reduce((acc, current) => acc + current, 0);
-        console.log(`Found ${count} files to process`);
-        this.queueSize += count;
-        let promises: Promise<any>[] = [];
-        for (let i = 0; i < folderList.length; i++) {
-            folderList[i] = path.normalize(folderList[i]);
-            await this.processDirectory(folderList[i], promises);
-        }
-        await Promise.all(promises);
-    }
-
-    private chokidarWatch(folderList: string[]) {
-        const chokidarconfig = {
-            ignoreInitial: true,//ignore the initial scan we have our own function
+    watch(directories: string[], callbacks: {
+        onAdd?: (filePath: string) => void | Promise<void>;
+        onChange?: (filePath: string) => void | Promise<void>;
+        onUnlink?: (filePath: string) => void | Promise<void>;
+        onReady?: () => void | Promise<void>;
+        onError?: (error: Error) => void | Promise<void>;
+    }, options?: {
+        interval?: number;
+        stabilityThreshold?: number;
+        pollInterval?: number;
+    }): chokidar.FSWatcher {
+        const chokidarConfig: chokidar.WatchOptions = {
+            ignoreInitial: true,  // Don't emit events for initial scan
             persistent: true,
             depth: Infinity,
             awaitWriteFinish: {
-                stabilityThreshold: this.config.stabilityThreshold || 30000,
-                pollInterval: this.config.pollInterval || 5000
+                stabilityThreshold: options?.stabilityThreshold || 30000,
+                pollInterval: options?.pollInterval || 5000
             }
         };
 
         let watcher: chokidar.FSWatcher;
-        if ((this.config.interval || 0) <= 0) {
-            watcher = chokidar.watch(folderList, chokidarconfig);
+        if ((options?.interval || 0) <= 0) {
+            watcher = chokidar.watch(directories, chokidarConfig);
         } else {
-            watcher = chokidar.watch(folderList, {
-                ...chokidarconfig,
+            watcher = chokidar.watch(directories, {
+                ...chokidarConfig,
                 usePolling: true,
-                interval: this.config.interval || 0
+                interval: options.interval
             });
         }
 
-        watcher
-            .on('add', async (filePath) => {
+        if (callbacks.onAdd) {
+            watcher.on('add', async (filePath) => {
                 try {
-                    await this.processFileExtended(filePath);
-                    if (this.finalizeDebounced) {
-                        await this.finalizeDebounced();
-                    }
+                    await callbacks.onAdd!(filePath);
                 } catch (error) {
-                    console.error(`Error processing file ${filePath}:`, error);
+                    console.error(`[FolderWatcher] Error in onAdd callback for ${filePath}:`, error);
                 }
-            })
-            .on('change', async (filePath) => {
-                try {
-                    await this.processFileExtended(filePath);
-                    if (this.finalizeDebounced) {
-                        await this.finalizeDebounced();
-                    }
-                } catch (e) {
-                    console.error(`Error processing file ${filePath}:`, e);
-                }
-            })
-            .on('unlink', async (filePath) => {
-                try {
-                    if (this.fileProcessor.deleteFile) {
-                        await this.fileProcessor.deleteFile(filePath);
-                    }
-                    this.processing.delete(filePath);
-                    await this.processFileExtended(filePath);
-                    if (this.finalizeDebounced) {
-                        await this.finalizeDebounced();
-                    }
-                } catch (e) {
-                    console.error(`Error processing file deletion:`, e);
-                }
-            })
-            .on('error', (error) => console.error(`Watcher error: ${error}`))
-            .on('ready', () => {
-                console.log(`Watching for file changes on ${folderList}`);
             });
-    }
-
-    async watch() {
-        let folders = this.WATCH_FOLDER_LIST;
-        if (!folders) {
-            throw new Error(`No folder to watch`);
-        }
-        let folderList = folders.split(',');
-
-        if (this.fileProcessor.initialize) {
-            await this.fileProcessor.initialize();
         }
 
-        this.chokidarWatch(folderList);
-
-        //start the initial scan
-        await this.processDirWithCount(folderList);
-        this.initialized = true;
-        if (this.finalizeDebounced) {
-            await this.finalizeDebounced();
+        if (callbacks.onChange) {
+            watcher.on('change', async (filePath) => {
+                try {
+                    await callbacks.onChange!(filePath);
+                } catch (error) {
+                    console.error(`[FolderWatcher] Error in onChange callback for ${filePath}:`, error);
+                }
+            });
         }
 
-        console.log(`Watcher ready`);
+        if (callbacks.onUnlink) {
+            watcher.on('unlink', async (filePath) => {
+                try {
+                    await callbacks.onUnlink!(filePath);
+                } catch (error) {
+                    console.error(`[FolderWatcher] Error in onUnlink callback for ${filePath}:`, error);
+                }
+            });
+        }
+
+        watcher.on('error', (error: Error) => {
+            if (callbacks.onError) {
+                callbacks.onError(error);
+            } else {
+                // Default error handling
+                const err = error as any;
+                if (err.code === 'EACCES' || err.code === 'EPERM') {
+                    console.warn(`[FolderWatcher] Permission denied for file watcher:`, error.message);
+                } else if (err.code === 'ENOENT') {
+                    console.warn(`[FolderWatcher] Watched path no longer exists:`, error.message);
+                } else if (err.code === 'ENOSPC') {
+                    console.error(`[FolderWatcher] CRITICAL: No space left on device or inotify watch limit reached:`, error.message);
+                    console.error(`[FolderWatcher] Try increasing fs.inotify.max_user_watches: sysctl fs.inotify.max_user_watches=524288`);
+                } else {
+                    console.error(`[FolderWatcher] Watcher error:`, error.message || error);
+                }
+            }
+        });
+
+        if (callbacks.onReady) {
+            watcher.on('ready', async () => {
+                try {
+                    console.log(`[FolderWatcher] Watching for file changes on ${directories.join(', ')}`);
+                    await callbacks.onReady!();
+                } catch (error) {
+                    console.error(`[FolderWatcher] Error in onReady callback:`, error);
+                }
+            });
+        }
+
+        return watcher;
     }
 }
