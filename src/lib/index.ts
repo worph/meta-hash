@@ -1,6 +1,7 @@
 //fileID
 export * from './file-id/FileIDComputerWorker.js';
 export * from './file-id/ShaComputeWorker.js';//worker
+export * from './file-id/FastHash.js'; // Fast-hash computation
 
 //hash-compute
 export * from './hash-compute/HashComputerIndexCache.js';

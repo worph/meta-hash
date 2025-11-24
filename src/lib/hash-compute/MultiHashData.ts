@@ -5,6 +5,7 @@ export interface MultiHashData {
     "cid_sha2-256"?: string;//0x12 sha2-256
     "cid_sha3-256"?: string; // 0x16 sha3-256
     "cid_sha3_384"?: string; // 0x16 sha3-256
+    cid_midhash256?: string; // 0x1000 midhash256 (SHA-256 of middle 1MB + file size) - CID v1 format
 }
 
 export interface ComputeInterface {
@@ -22,6 +23,7 @@ export enum CID_ALGORITHM_CODES {
     sha256 = 0x12,
     sha3_256 = 0x16,
     sha3_384 = 0x15,
+    midhash256 = 0x1000, // Custom code for midhash256
 }
 
 export enum CID_ALGORITHM_NAMES {
@@ -31,6 +33,7 @@ export enum CID_ALGORITHM_NAMES {
     sha256 = 'cid_sha2-256',
     sha3_256 = 'cid_sha3-256',
     sha3_384 = 'cid_sha3-384',
+    midhash256 = 'cid_midhash256',
 }
 
 export enum CID_ALGORITHM {
@@ -40,4 +43,5 @@ export enum CID_ALGORITHM {
     sha256 = 'sha2-256',
     sha3_256 = 'sha3-256',
     sha3_384 = 'sha3-384',
+    midhash256 = 'midhash256',
 }
