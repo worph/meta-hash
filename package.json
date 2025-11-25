@@ -43,6 +43,7 @@
     "vitest": "^1.4.0"
   },
   "dependencies": {
+    "bencodec": "^2.0.1",
     "chokidar": "^3.6.0",
     "crc-32": "^1.2.2",
     "csv-parse": "^5.5.5",

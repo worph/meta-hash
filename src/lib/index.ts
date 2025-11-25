@@ -2,6 +2,8 @@
 export * from './file-id/FileIDComputerWorker.js';
 export * from './file-id/ShaComputeWorker.js';//worker
 export * from './file-id/FastHash.js'; // Fast-hash computation
+export * from './file-id/BtihV2Hasher.js'; // BitTorrent v2 info hash
+export * from './file-id/MagnetLinkGenerator.js'; // Magnet link generation
 
 //hash-compute
 export * from './hash-compute/HashComputerIndexCache.js';

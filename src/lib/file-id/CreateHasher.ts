@@ -2,6 +2,7 @@ import {CID_ALGORITHM_NAMES} from "../hash-compute/MultiHashData";
 import {SimpleHash} from "./SimpleHash";
 import {createHash} from "crypto";
 import {Crc32Hash} from "./Crc32Hash";
+import {BtihV2Hasher} from "./BtihV2Hasher";
 
 /**
  * Compute the CIDs of a file using specific algorithms
@@ -22,6 +23,8 @@ export async function createHasher(algo: CID_ALGORITHM_NAMES): Promise<SimpleHas
             return createHash("sha3-384");
         case CID_ALGORITHM_NAMES.crc32:
             return new Crc32Hash();
+        case CID_ALGORITHM_NAMES.btih_v2:
+            return new BtihV2Hasher();
         default:
             throw new Error(`Unsupported algorithm: ${algo}`);
     }

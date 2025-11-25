@@ -6,6 +6,7 @@ export interface MultiHashData {
     "cid_sha3-256"?: string; // 0x16 sha3-256
     "cid_sha3_384"?: string; // 0x16 sha3-256
     cid_midhash256?: string; // 0x1000 midhash256 (SHA-256 of middle 1MB + file size) - CID v1 format
+    cid_btih_v2?: string; // 0x10B7 BitTorrent v2 info hash (BEP 52) - CID v1 format
 }
 
 export interface ComputeInterface {
@@ -24,6 +25,7 @@ export enum CID_ALGORITHM_CODES {
     sha3_256 = 0x16,
     sha3_384 = 0x15,
     midhash256 = 0x1000, // Custom code for midhash256
+    btih_v2 = 0x10B7, // Custom code for BitTorrent v2 info hash
 }
 
 export enum CID_ALGORITHM_NAMES {
@@ -34,6 +36,7 @@ export enum CID_ALGORITHM_NAMES {
     sha3_256 = 'cid_sha3-256',
     sha3_384 = 'cid_sha3-384',
     midhash256 = 'cid_midhash256',
+    btih_v2 = 'cid_btih_v2',
 }
 
 export enum CID_ALGORITHM {
@@ -44,4 +47,5 @@ export enum CID_ALGORITHM {
     sha3_256 = 'sha3-256',
     sha3_384 = 'sha3-384',
     midhash256 = 'midhash256',
+    btih_v2 = 'btih-v2',
 }
