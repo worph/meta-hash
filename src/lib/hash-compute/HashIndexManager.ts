@@ -48,6 +48,8 @@ export class HashIndexManager {
     public async init(autosave = true) {
         if (!this.initialLoad) {
             this.initialLoad = new Promise<void>(async (resolve, reject) => {
+                // Create the index folder if it doesn't exist
+                await fs.mkdir(this.indexFolderPath, { recursive: true });
                 const stat = await fs.stat(this.indexFolderPath);
                 if (!stat.isDirectory()) {
                     throw new Error(`Invalid index folder path ${this.indexFolderPath}`);
