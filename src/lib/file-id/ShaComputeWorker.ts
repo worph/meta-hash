@@ -14,6 +14,6 @@ export default async function computeCIDs({filePath, algorithms}: {
     filePath: string;
     algorithms: CID_ALGORITHM_NAMES[]
 }): Promise<string[]> {
-    const stream = Readable.toWeb(fs.createReadStream(filePath));
+    const stream = Readable.toWeb(fs.createReadStream(filePath)) as ReadableStream<Uint8Array>;
     return computeCIDsInternal({stream, algorithms, createHasher});
 }
