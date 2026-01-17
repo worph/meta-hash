@@ -276,26 +276,26 @@ export class HashIndexManager {
         if (!filePath || !fileSize || !mtime || !hashs) {
             throw new Error('Invalid parameters');
         }
-        for (const hash of this.targetHash) {
-            if (!hashs[hash]) {
-                throw new Error(`Missing hash ${hash}`);
-            }
+        // Check that at least one target hash is provided
+        const providedHashes = this.targetHash.filter(hash => hashs[hash]);
+        if (providedHashes.length === 0) {
+            throw new Error('At least one target hash must be provided');
         }
         const size = fileSize + "";
         const baseName = path.basename(filePath);
         const cacheKey = `${baseName}-${size}-${mtime}`;
         let indexLine = this.cache.get(cacheKey);
         if (!indexLine) {
-            //filter only the hashes we need
+            // Filter only the hashes we need (and are provided)
             let filteredHash = {};
-            for (const hash of this.targetHash) {
+            for (const hash of providedHashes) {
                 filteredHash[hash] = hashs[hash];
             }
             const data = {path: baseName, size: size, mtime: mtime, ...filteredHash};
             this.cache.set(cacheKey, data);
         } else {
-            //update the cache with the latest data
-            for (const hash of this.targetHash) {
+            // Update the cache with the provided hashes (don't overwrite with undefined)
+            for (const hash of providedHashes) {
                 indexLine[hash] = hashs[hash];
             }
         }
